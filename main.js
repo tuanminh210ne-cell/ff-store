@@ -90,18 +90,22 @@ function renderCard(acc) {
   // Ảnh fallback nếu lỗi
   const imgOnError = "this.onerror=null; this.src='https://placehold.co/400x300/1a1a1a/666?text=No+Image'";
 
+  const isSold = acc.status === "Đã bán";
+
   return `
-    <div class="bg-[#1a1a1a] rounded-xl overflow-hidden border border-gray-800 card-hover flex flex-col">
+    <div class="bg-[#1a1a1a] rounded-xl overflow-hidden border border-gray-800 card-hover flex flex-col ${isSold ? 'opacity-70' : ''}">
       <!-- Ảnh thumbnail -->
       <div class="relative aspect-[4/3] overflow-hidden">
         <img
           src="${acc.image_url || 'https://placehold.co/400x300/1a1a1a/666?text=No+Image'}"
           alt="${acc.title}"
-          class="w-full h-full object-cover"
+          class="w-full h-full object-cover ${isSold ? 'grayscale' : ''}"
           onerror="${imgOnError}"
         />
         <!-- Badge rank góc trên trái -->
         ${rankBadge}
+        <!-- Badge Đã bán góc trên phải -->
+        ${isSold ? '<span class="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">ĐÃ BÁN</span>' : ''}
       </div>
 
       <!-- Nội dung -->
@@ -119,8 +123,8 @@ function renderCard(acc) {
 
         <!-- Nút xem chi tiết -->
         <a href="/acc/${acc.slug || acc.id}" target="_blank"
-           class="block text-center bg-[#FF3333] hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg btn-glow transition-all text-sm">
-          Xem chi tiết
+           class="block text-center ${isSold ? 'bg-gray-600 hover:bg-gray-700' : 'bg-[#FF3333] hover:bg-red-700'} text-white font-semibold py-2.5 rounded-lg transition-all text-sm">
+          ${isSold ? 'Đã bán' : 'Xem chi tiết'}
         </a>
       </div>
     </div>

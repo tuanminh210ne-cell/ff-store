@@ -244,11 +244,8 @@ async def redirect_admin():
 )
 @limiter.limit("100/minute")
 def list_accounts(request: Request, db: Session = Depends(get_db)):
-    accounts = (
-        db.query(Account)
-        .filter(Account.status == "Đang bán")
-        .all()
-    )
+    # Trả về TẤT CẢ acc (cả đã bán) để web uy tín hơn
+    accounts = db.query(Account).order_by(Account.id.desc()).all()
     return accounts
 
 
