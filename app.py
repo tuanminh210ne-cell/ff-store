@@ -481,19 +481,19 @@ async def upload_image(
     current_admin: Admin = Depends(get_current_admin),
 ):
     try:
-        body = await request.json()
-        image_data = body.get("image")  # base64 string
-        filename = body.get("filename", "image.jpg")
+        form = await request.form()
+        image_data = form.get("image")
+        filename = form.get("filename", "image.jpg")
 
         if not image_data:
             raise HTTPException(status_code=400, detail="Thiếu dữ liệu ảnh")
 
         # Log kích thước ảnh
-        data_size = len(image_data)
-        print(f"[UPLOAD] File: {filename}, Size: {data_size} bytes")
+        data_size = len(str(image_data))
+        print(f"[UPLOAD] File: {filename}, Size: {data_size} chars")
 
         # Upload lên Google Drive
-        url = upload_image_to_drive(image_data, filename)
+        url = upload_image_to_drive(str(image_data), str(filename))
 
         print(f"[UPLOAD] Success: {url}")
         return {"success": True, "url": url}

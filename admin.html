@@ -621,15 +621,18 @@
 
     async function uploadToGoogleDrive(base64Data, filename) {
       const token = sessionStorage.getItem("token");
-      // Loại bỏ ký tự newline trong base64
-      const cleanBase64 = base64Data.replace(/[\r\n]/g, "");
+
+      // Gửi qua FormData để tránh lỗi JSON control character
+      const formData = new FormData();
+      formData.append("image", base64Data);
+      formData.append("filename", filename);
+
       const res = await fetch(`${BASE_URL}/api/admin/upload`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ image: cleanBase64, filename }),
+        body: formData,
       });
 
       const data = await res.json();
