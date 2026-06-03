@@ -3,6 +3,8 @@
 # Chỉ chứa ORM models, không chứa Pydantic schemas
 # ============================================================
 
+import random
+import string
 from datetime import datetime
 
 # --- SQLAlchemy ---
@@ -15,6 +17,11 @@ from database import Base, engine, SessionLocal
 from werkzeug.security import generate_password_hash
 
 
+def generate_slug(length=8):
+    """Tạo slug random (VD: fbdhjsfghjs)"""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
+
+
 # ============================================================
 # Định nghĩa 3 bảng trong database
 # ============================================================
@@ -24,6 +31,7 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    slug = Column(Text, unique=True)                # URL ngắn (random, không đoán được)
     title = Column(Text, nullable=False)           # Tên acc
     price = Column(Integer, nullable=False)         # Giá tiền (VNĐ)
     rank_level = Column(Text)                       # Level (số)

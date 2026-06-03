@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 
 # --- Import từ các file đã tách ---
 from database import get_db, engine, Base, SessionLocal
-from models import Account, Admin, RateLimitLog, AuditLog
+from models import Account, Admin, RateLimitLog, AuditLog, generate_slug
 from schemas import (
     AccountListItem, AccountDetail, MessageResponse, ErrorResponse,
     AccountCreate, LoginRequest, LoginResponse,
@@ -165,28 +165,28 @@ from fastapi.responses import FileResponse, RedirectResponse
 STATIC_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-# Root → redirect tới index.html
+# Root → redirect tới /home
 @app.get("/", include_in_schema=False)
 async def root():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    return RedirectResponse(url="/home")
 
 
 # Mount StaticFiles ở /static để serve JS/CSS/images
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-# Route explicit cho các file HTML (không dùng catch-all)
-@app.get("/index.html", include_in_schema=False)
-async def serve_index():
+# Route mới — URL sạch
+@app.get("/home", include_in_schema=False)
+async def serve_home():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
-@app.get("/detail.html", include_in_schema=False)
-async def serve_detail():
-    return FileResponse(os.path.join(STATIC_DIR, "detail.html"))
+@app.get("/danh-sach-acc", include_in_schema=False)
+async def serve_accounts():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
-@app.get("/admin.html", include_in_schema=False)
+@app.get("/admin", include_in_schema=False)
 async def serve_admin():
     return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
 
@@ -194,6 +194,28 @@ async def serve_admin():
 @app.get("/main.js", include_in_schema=False)
 async def serve_main_js():
     return FileResponse(os.path.join(STATIC_DIR, "main.js"))
+
+
+# Route cũ — redirect sang URL mới
+@app.get("/index.html", include_in_schema=False)
+async def redirect_index():
+    return RedirectResponse(url="/home")
+
+
+# Detail page theo slug (URL ngắn)
+@app.get("/{slug}", include_in_schema=False)
+async def serve_detail_by_slug(slug: str, db: Session = Depends(get_db)):
+    # Kiểm tra slug có phải là acc không
+    account = db.query(Account).filter(Account.slug == slug).first()
+    if account:
+        return FileResponse(os.path.join(STATIC_DIR, "detail.html"))
+    # Nếu không phải slug acc → 404
+    raise HTTPException(status_code=404, detail="Not found")
+
+
+@app.get("/admin.html", include_in_schema=False)
+async def redirect_admin():
+    return RedirectResponse(url="/admin")
 
 
 # ============================================================
@@ -262,6 +284,33 @@ def get_account(
 
 
 # ============================================================
+# GET /api/acc/{slug}
+# Trả về chi tiết acc theo slug (URL ngắn)
+# ============================================================
+@app.get(
+    "/api/acc/{slug}",
+    response_model=AccountDetail,
+    summary="Chi tiết acc theo slug",
+    responses={404: {"model": ErrorResponse}},
+)
+@limiter.limit("100/minute")
+def get_account_by_slug(
+    request: Request,
+    slug: str,
+    db: Session = Depends(get_db),
+):
+    account = db.query(Account).filter(Account.slug == slug).first()
+
+    if account is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "Không tìm thấy acc này"},
+        )
+
+    return account
+
+
+# ============================================================
 # POST /api/auth/login
 # Đăng nhập admin, trả về JWT token
 # Rate limit: 5 lần/phút (chống brute force)
@@ -315,8 +364,14 @@ def add_account(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
+    # Tạo slug unique
+    slug = generate_slug()
+    while db.query(Account).filter(Account.slug == slug).first():
+        slug = generate_slug()
+
     # Tạo acc mới, status tự động = 'Đang bán'
     new_account = Account(
+        slug=slug,
         title=body.title,
         price=body.price,
         rank_level=body.rank_level,

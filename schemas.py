@@ -14,6 +14,7 @@ import re
 # ============================================================
 class AccountListItem(BaseModel):
     id: int
+    slug: Optional[str] = None
     title: str
     price: int
     rank_level: Optional[str] = None
@@ -28,6 +29,7 @@ class AccountListItem(BaseModel):
 # ============================================================
 class AccountDetail(BaseModel):
     id: int
+    slug: Optional[str] = None
     title: str
     price: int
     rank_level: Optional[str] = None
