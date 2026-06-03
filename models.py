@@ -55,6 +55,19 @@ class RateLimitLog(Base):
     timestamp = Column(DateTime, default=datetime.now)  # Thời gian gọi
 
 
+# --- Bảng audit_log: ghi log hành động admin ---
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_user = Column(Text)           # Tên admin thực hiện
+    action = Column(Text)               # Hành động (LOGIN, ADD, DELETE, MARK_SOLD)
+    target_id = Column(Integer)         # ID acc bị ảnh hưởng (nếu có)
+    detail = Column(Text)               # Chi tiết (tên acc, giá, etc.)
+    ip_address = Column(Text)           # IP của admin
+    timestamp = Column(DateTime, default=datetime.now)  # Thời gian
+
+
 # ============================================================
 # Tạo bảng và chèn dữ liệu mẫu
 # ============================================================

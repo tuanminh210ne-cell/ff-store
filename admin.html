@@ -235,6 +235,36 @@
         </table>
       </div>
     </div>
+
+    <!-- Khu vực 3: Audit Log -->
+    <div class="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-game text-xl text-[#FFD700]">LỊCH SỬ THAO TÁC</h2>
+        <button onclick="loadAuditLog()" class="text-gray-400 hover:text-white text-sm transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Làm mới
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-700">
+              <th class="text-left text-gray-400 font-medium py-3 px-3">Thời gian</th>
+              <th class="text-left text-gray-400 font-medium py-3 px-3">Admin</th>
+              <th class="text-left text-gray-400 font-medium py-3 px-3">Hành động</th>
+              <th class="text-left text-gray-400 font-medium py-3 px-3">Chi tiết</th>
+              <th class="text-left text-gray-400 font-medium py-3 px-3">IP</th>
+            </tr>
+          </thead>
+          <tbody id="audit-log-body">
+            <tr><td colspan="5" class="text-center text-gray-500 py-8">Nhấn "Làm mới" để xem</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
 
@@ -346,6 +376,7 @@
       document.getElementById("admin-screen").classList.remove("hidden");
       document.getElementById("btn-logout").classList.remove("hidden");
       loadAdminAccounts();
+      loadAuditLog();
     }
 
 
@@ -423,6 +454,59 @@
         if (err.message !== "Unauthorized") {
           tbody.innerHTML = `
             <tr><td colspan="6" class="text-center text-red-400 py-8">Lỗi tải dữ liệu.</td></tr>
+          `;
+        }
+      }
+    }
+
+
+    // ========================================================
+    // Tải lịch sử thao tác
+    // ========================================================
+    async function loadAuditLog() {
+      const tbody = document.getElementById("audit-log-body");
+
+      try {
+        const res = await authFetch(`${BASE_URL}/api/admin/audit-log`);
+        const logs = await res.json();
+
+        if (logs.length === 0) {
+          tbody.innerHTML = `
+            <tr><td colspan="5" class="text-center text-gray-500 py-8">Chưa có thao tác nào.</td></tr>
+          `;
+          return;
+        }
+
+        // Map action sang tiếng Việt + màu sắc
+        const actionMap = {
+          "LOGIN": { label: "Đăng nhập", color: "bg-blue-500/20 text-blue-400" },
+          "ADD": { label: "Thêm acc", color: "bg-green-500/20 text-green-400" },
+          "DELETE": { label: "Xóa acc", color: "bg-red-500/20 text-red-400" },
+          "MARK_SOLD": { label: "Đã bán", color: "bg-yellow-500/20 text-yellow-400" },
+        };
+
+        tbody.innerHTML = logs.map(log => {
+          const action = actionMap[log.action] || { label: log.action, color: "bg-gray-500/20 text-gray-400" };
+          const time = new Date(log.timestamp).toLocaleString("vi-VN");
+          return `
+            <tr class="border-b border-gray-800 hover:bg-[#222] transition-colors">
+              <td class="py-3 px-3 text-gray-400 text-xs">${time}</td>
+              <td class="py-3 px-3 text-white font-medium">${escapeHtml(log.admin_user)}</td>
+              <td class="py-3 px-3">
+                <span class="inline-block ${action.color} text-xs font-semibold px-2.5 py-1 rounded-full">
+                  ${action.label}
+                </span>
+              </td>
+              <td class="py-3 px-3 text-gray-300">${escapeHtml(log.detail || "-")} ${log.target_id ? `(#${log.target_id})` : ''}</td>
+              <td class="py-3 px-3 text-gray-500 text-xs">${escapeHtml(log.ip_address || "-")}</td>
+            </tr>
+          `;
+        }).join("");
+
+      } catch (err) {
+        if (err.message !== "Unauthorized") {
+          tbody.innerHTML = `
+            <tr><td colspan="5" class="text-center text-red-400 py-8">Lỗi tải dữ liệu.</td></tr>
           `;
         }
       }

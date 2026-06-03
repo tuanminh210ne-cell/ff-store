@@ -15,13 +15,34 @@ from slowapi.errors import RateLimitExceeded
 
 # --- Import từ các file đã tách ---
 from database import get_db, engine, Base, SessionLocal
-from models import Account, Admin, RateLimitLog
+from models import Account, Admin, RateLimitLog, AuditLog
 from schemas import (
     AccountListItem, AccountDetail, MessageResponse, ErrorResponse,
     AccountCreate, LoginRequest, LoginResponse,
 )
 from auth import create_access_token, get_current_admin
 from werkzeug.security import check_password_hash, generate_password_hash
+
+
+# ============================================================
+# Helper: Ghi audit log
+# ============================================================
+def write_audit_log(admin_user: str, action: str, target_id: int = None, detail: str = None, ip_address: str = None):
+    db = SessionLocal()
+    try:
+        log = AuditLog(
+            admin_user=admin_user,
+            action=action,
+            target_id=target_id,
+            detail=detail,
+            ip_address=ip_address,
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
 
 
 # ============================================================
@@ -264,6 +285,14 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
     # Tạo JWT token
     access_token = create_access_token(data={"sub": admin.username})
 
+    # Ghi audit log
+    write_audit_log(
+        admin_user=admin.username,
+        action="LOGIN",
+        detail="Đăng nhập thành công",
+        ip_address=request.client.host,
+    )
+
     return LoginResponse(access_token=access_token)
 
 
@@ -300,6 +329,15 @@ def add_account(
     db.add(new_account)
     db.commit()
     db.refresh(new_account)
+
+    # Ghi audit log
+    write_audit_log(
+        admin_user=current_admin.username,
+        action="ADD",
+        target_id=new_account.id,
+        detail=f"{body.title} - {body.price:,}đ",
+        ip_address=request.client.host,
+    )
 
     return MessageResponse(
         success=True,
@@ -338,6 +376,15 @@ def mark_as_sold(
     account.status = "Đã bán"
     db.commit()
 
+    # Ghi audit log
+    write_audit_log(
+        admin_user=current_admin.username,
+        action="MARK_SOLD",
+        target_id=account.id,
+        detail=f"{account.title}",
+        ip_address=request.client.host,
+    )
+
     return MessageResponse(
         success=True,
         message="Đã đánh dấu là Đã bán",
@@ -371,10 +418,49 @@ def delete_account(
         )
 
     # Xóa acc
+    title = account.title
     db.delete(account)
     db.commit()
+
+    # Ghi audit log
+    write_audit_log(
+        admin_user=current_admin.username,
+        action="DELETE",
+        target_id=account_id,
+        detail=f"{title}",
+        ip_address=request.client.host,
+    )
 
     return MessageResponse(
         success=True,
         message="Đã xóa acc thành công",
     )
+
+
+# ============================================================
+# GET /api/admin/audit-log
+# Xem lịch sử hành động admin (yêu cầu JWT)
+# ============================================================
+@app.get(
+    "/api/admin/audit-log",
+    summary="Lịch sử hành động admin (admin only)",
+)
+@limiter.limit("100/minute")
+def get_audit_log(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(100).all()
+    return [
+        {
+            "id": log.id,
+            "admin_user": log.admin_user,
+            "action": log.action,
+            "target_id": log.target_id,
+            "detail": log.detail,
+            "ip_address": log.ip_address,
+            "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+        }
+        for log in logs
+    ]
