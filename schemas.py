@@ -18,6 +18,7 @@ class AccountListItem(BaseModel):
     title: str
     price: int
     rank_level: Optional[str] = None
+    status: str = "Đang bán"
     image_url: Optional[str] = None
 
     class Config:
