@@ -572,25 +572,44 @@
 
 
     // ========================================================
-    // Gallery images storage
+    // Gallery images storage (URLs from Google Drive)
     // ========================================================
     let galleryImages = [];
+    let isUploading = false;
 
-    function handleGalleryUpload(input) {
+    async function handleGalleryUpload(input) {
       const files = Array.from(input.files);
       if (galleryImages.length + files.length > 100) {
         showToast("Tối đa 100 ảnh!", "error");
         return;
       }
 
-      let loaded = 0;
-      files.forEach(file => {
+      isUploading = true;
+      showToast(`Đang upload ${files.length} ảnh lên Google Drive...`, "success");
+
+      for (const file of files) {
         if (file.size > 5 * 1024 * 1024) {
           showToast(`Ảnh ${file.name} quá lớn (tối đa 5MB)`, "error");
-          loaded++;
-          return;
+          continue;
         }
 
+        try {
+          const base64 = await resizeImage(file);
+          const url = await uploadToGoogleDrive(base64, file.name);
+          galleryImages.push(url);
+          updateGalleryPreview();
+        } catch (err) {
+          showToast(`Lỗi upload ${file.name}: ${err.message}`, "error");
+        }
+      }
+
+      isUploading = false;
+      showToast(`Đã upload xong ${files.length} ảnh!`, "success");
+      input.value = "";
+    }
+
+    function resizeImage(file) {
+      return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function(e) {
           const img = new Image();
@@ -605,15 +624,34 @@
             canvas.width = w;
             canvas.height = h;
             canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-            galleryImages.push(canvas.toDataURL("image/jpeg", 0.7));
-            loaded++;
-            updateGalleryPreview();
+            resolve(canvas.toDataURL("image/jpeg", 0.7));
           };
+          img.onerror = reject;
           img.src = e.target.result;
         };
+        reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      input.value = "";
+    }
+
+    async function uploadToGoogleDrive(base64Data, filename) {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(`${BASE_URL}/api/admin/upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image: base64Data, filename }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Upload thất bại");
+      }
+
+      const data = await res.json();
+      return data.url;
     }
 
     function updateGalleryPreview() {
@@ -636,58 +674,37 @@
 
 
     // ========================================================
-    // Xử lý upload ảnh → resize + chuyển base64
+    // Xử lý upload ảnh bìa → resize + upload Google Drive
     // ========================================================
-    function handleImageUpload(input) {
+    async function handleImageUpload(input) {
       const file = input.files[0];
       if (!file) return;
 
-      // Giới hạn 5MB
       if (file.size > 5 * 1024 * 1024) {
         showToast("Ảnh quá lớn (tối đa 5MB)", "error");
         input.value = "";
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        // Resize ảnh để giảm dung lượng
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement("canvas");
-          const maxSize = 800;
-          let width = img.width;
-          let height = img.height;
+      showToast("Đang upload ảnh bìa...", "success");
 
-          if (width > maxSize || height > maxSize) {
-            if (width > height) {
-              height = Math.round(height * maxSize / width);
-              width = maxSize;
-            } else {
-              width = Math.round(width * maxSize / height);
-              height = maxSize;
-            }
-          }
+      try {
+        const base64 = await resizeImage(file);
+        const url = await uploadToGoogleDrive(base64, file.name);
 
-          canvas.width = width;
-          canvas.height = height;
-          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        // Gán URL vào input
+        document.getElementById("add-image").value = url;
 
-          // Chuyển sang base64 JPEG (chất lượng 70%)
-          const base64 = canvas.toDataURL("image/jpeg", 0.7);
+        // Hiện preview
+        document.getElementById("preview-img").src = url;
+        document.getElementById("image-preview").classList.remove("hidden");
 
-          // Gán vào input URL
-          document.getElementById("add-image").value = base64;
+        showToast("Ảnh bìa đã upload thành công!", "success");
+      } catch (err) {
+        showToast("Lỗi upload: " + err.message, "error");
+      }
 
-          // Hiện preview
-          document.getElementById("preview-img").src = base64;
-          document.getElementById("image-preview").classList.remove("hidden");
-
-          showToast("Ảnh đã upload thành công!", "success");
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
+      input.value = "";
     }
 
 

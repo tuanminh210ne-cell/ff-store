@@ -22,6 +22,7 @@ from schemas import (
 )
 from auth import create_access_token, get_current_admin
 from werkzeug.security import check_password_hash, generate_password_hash
+from gdrive import upload_image_to_drive
 
 
 # ============================================================
@@ -464,3 +465,35 @@ def get_audit_log(
         }
         for log in logs
     ]
+
+
+# ============================================================
+# POST /api/admin/upload
+# Upload ảnh lên Google Drive (yêu cầu JWT)
+# ============================================================
+@app.post(
+    "/api/admin/upload",
+    summary="Upload ảnh lên Google Drive (admin only)",
+)
+@limiter.limit("50/minute")
+async def upload_image(
+    request: Request,
+    current_admin: Admin = Depends(get_current_admin),
+):
+    try:
+        body = await request.json()
+        image_data = body.get("image")  # base64 string
+        filename = body.get("filename", "image.jpg")
+
+        if not image_data:
+            raise HTTPException(status_code=400, detail="Thiếu dữ liệu ảnh")
+
+        # Upload lên Google Drive
+        url = upload_image_to_drive(image_data, filename)
+
+        return {"success": True, "url": url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi upload: {str(e)}")
+
