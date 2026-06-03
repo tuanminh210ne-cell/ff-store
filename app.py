@@ -53,7 +53,24 @@ app.add_middleware(
 
 
 # ============================================================
-# BƯỚC 3: Cấu hình Rate Limiting (100 request/phút/IP)
+# BƯỚC 3: Security Headers — bảo vệ XSS, clickjacking, MIME sniff
+# ============================================================
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"          # Chống MIME sniff
+    response.headers["X-Frame-Options"] = "DENY"                     # Chống clickjacking
+    response.headers["X-XSS-Protection"] = "1; mode=block"           # Chống XSS (cũ)
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"  # Giới hạn referrer
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"  # Chặn truy cập thiết bị
+    # Chỉ cho phép HTTPS sau 1 năm (HSTS)
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+# ============================================================
+# BƯỚC 4: Cấu hình Rate Limiting (100 request/phút/IP)
 # ============================================================
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
