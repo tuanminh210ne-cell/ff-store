@@ -23,7 +23,7 @@ from schemas import (
 )
 from auth import create_access_token, get_current_admin
 from werkzeug.security import check_password_hash, generate_password_hash
-from gdrive import upload_image_to_drive
+from gdrive import upload_image_to_drive, GAS_URL
 
 
 # ============================================================
