@@ -595,7 +595,7 @@
 
         try {
           const base64 = await readFileAsBase64(file);
-          const url = await uploadToGoogleDrive(base64, file.name);
+          const url = await uploadToImgBB(base64, file.name);
           galleryImages.push(url);
           updateGalleryPreview();
         } catch (err) {
@@ -619,41 +619,29 @@
       });
     }
 
-    async function uploadToGoogleDrive(base64Data, filename) {
-      const token = sessionStorage.getItem("token");
+    // ImgBB API Key
+    const IMGBB_API_KEY = "e1bb3af692ac502b19f75b834ba75d1c";
 
-      // Chuyển base64 thành Blob để gửi dạng file
-      const byteString = atob(base64Data.split(",")[1] || base64Data);
-      const mimeType = base64Data.match(/data:([^;]+)/)?.[1] || "image/jpeg";
-      const ab = new ArrayBuffer(byteString.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-      }
-      const blob = new Blob([ab], { type: mimeType });
-
+    async function uploadToImgBB(base64Data, filename) {
+      // Upload trực tiếp từ browser lên ImgBB (nhanh ~1-2s)
       const formData = new FormData();
-      formData.append("file", blob, filename);
+      formData.append("key", IMGBB_API_KEY);
+      formData.append("image", base64Data.split(",")[1] || base64Data);
+      formData.append("name", filename.replace(/\.[^.]+$/, ""));
 
-      const res = await fetch(`${BASE_URL}/api/admin/upload`, {
+      const res = await fetch("https://api.imgbb.com/1/upload", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
         body: formData,
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.detail || JSON.stringify(data));
+      if (!data.success) {
+        throw new Error(data.error?.message || "Upload ImgBB thất bại");
       }
 
-      if (!data.url) {
-        throw new Error("Không nhận được URL từ server");
-      }
-
-      return data.url;
+      // Trả về URL ảnh (dùng display_url cho chất lượng cao)
+      return data.data.display_url;
     }
 
     function updateGalleryPreview() {
@@ -692,7 +680,7 @@
 
       try {
         const base64 = await readFileAsBase64(file);
-        const url = await uploadToGoogleDrive(base64, file.name);
+        const url = await uploadToImgBB(base64, file.name);
 
         // Gán URL vào input
         document.getElementById("add-image").value = url;
