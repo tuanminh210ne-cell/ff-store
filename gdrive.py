@@ -4,6 +4,7 @@
 
 import os
 import json
+import base64
 import requests
 import google.auth.transport.requests
 from google.oauth2 import service_account
@@ -11,16 +12,19 @@ from google.oauth2 import service_account
 # --- Folder ID trên Google Drive ---
 GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "1-tFo_uphd3lWL77_q3lVq5lEV9Wx2SVl")
 
-# --- Credentials từ biến môi trường ---
-GDRIVE_CREDENTIALS = os.getenv("GDRIVE_CREDENTIALS")
+# --- Credentials từ biến môi trường (base64 encoded) ---
+GDRIVE_CREDENTIALS_B64 = os.getenv("GDRIVE_CREDENTIALS")
 
 
 def get_access_token():
     """Lấy access token từ service account"""
-    if not GDRIVE_CREDENTIALS:
+    if not GDRIVE_CREDENTIALS_B64:
         raise Exception("GDRIVE_CREDENTIALS chưa được cấu hình")
 
-    creds_info = json.loads(GDRIVE_CREDENTIALS)
+    # Decode base64 → JSON string → dict
+    creds_json = base64.b64decode(GDRIVE_CREDENTIALS_B64).decode("utf-8")
+    creds_info = json.loads(creds_json)
+
     creds = service_account.Credentials.from_service_account_info(
         creds_info,
         scopes=["https://www.googleapis.com/auth/drive.file"]
