@@ -391,6 +391,10 @@
                 class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
                 Đã Bán
               </button>
+              <button onclick="deleteAccount(${acc.id}, '${escapeHtml(acc.title).replace(/'/g, "\\'")}')"
+                class="bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ml-1">
+                Xóa
+              </button>
             </td>
           </tr>
         `).join("");
@@ -424,6 +428,35 @@
           loadAdminAccounts();
         } else {
           const msg = data.detail?.error || "Thao tác thất bại";
+          showToast(msg, "error");
+        }
+      } catch (err) {
+        if (err.message !== "Unauthorized") {
+          showToast("Lỗi kết nối server", "error");
+        }
+      }
+    }
+
+
+    // ========================================================
+    // Xóa acc
+    // ========================================================
+    async function deleteAccount(id, title) {
+      const confirmed = confirm(`Bạn có chắc muốn XÓA "${title}" (ID: ${id})?\n\nHành động này không thể hoàn tác!`);
+      if (!confirmed) return;
+
+      try {
+        const res = await authFetch(`${BASE_URL}/api/admin/delete/${id}`, {
+          method: "DELETE",
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(`Đã xóa acc #${id}`, "success");
+          loadAdminAccounts();
+        } else {
+          const msg = data.detail?.error || "Xóa thất bại";
           showToast(msg, "error");
         }
       } catch (err) {

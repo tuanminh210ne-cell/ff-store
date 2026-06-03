@@ -305,3 +305,39 @@ def mark_as_sold(
         success=True,
         message="Đã đánh dấu là Đã bán",
     )
+
+
+# ============================================================
+# DELETE /api/admin/delete/{id}
+# Xóa acc (yêu cầu JWT)
+# ============================================================
+@app.delete(
+    "/api/admin/delete/{account_id}",
+    response_model=MessageResponse,
+    summary="Xóa acc (admin only)",
+    responses={404: {"model": ErrorResponse}},
+)
+@limiter.limit("100/minute")
+def delete_account(
+    request: Request,
+    account_id: int,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    # Tìm acc theo ID
+    account = db.query(Account).filter(Account.id == account_id).first()
+
+    if account is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "Không tìm thấy acc này"},
+        )
+
+    # Xóa acc
+    db.delete(account)
+    db.commit()
+
+    return MessageResponse(
+        success=True,
+        message="Đã xóa acc thành công",
+    )
