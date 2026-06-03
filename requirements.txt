@@ -7,6 +7,6 @@ slowapi
 werkzeug
 aiofiles
 psycopg2-binary
-google-api-python-client
 google-auth
 python-multipart
+requests

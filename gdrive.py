@@ -1,13 +1,12 @@
 # ============================================================
-# gdrive.py - Upload ảnh lên Google Drive
+# gdrive.py - Upload ảnh lên Google Drive (dùng requests)
 # ============================================================
 
 import os
 import json
-import io
+import requests
+import google.auth.transport.requests
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 
 # --- Folder ID trên Google Drive ---
 GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "1-tFo_uphd3lWL77_q3lVq5lEV9Wx2SVl")
@@ -16,8 +15,8 @@ GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "1-tFo_uphd3lWL77_q3lVq5lEV9Wx2
 GDRIVE_CREDENTIALS = os.getenv("GDRIVE_CREDENTIALS")
 
 
-def get_drive_service():
-    """Tạo Google Drive service từ credentials"""
+def get_access_token():
+    """Lấy access token từ service account"""
     if not GDRIVE_CREDENTIALS:
         raise Exception("GDRIVE_CREDENTIALS chưa được cấu hình")
 
@@ -26,7 +25,8 @@ def get_drive_service():
         creds_info,
         scopes=["https://www.googleapis.com/auth/drive.file"]
     )
-    return build("drive", "v3", credentials=creds)
+    creds.refresh(google.auth.transport.requests.Request())
+    return creds.token
 
 
 def upload_image_to_drive(file_bytes: bytes, filename: str, mimetype: str = "image/jpeg") -> str:
@@ -34,39 +34,47 @@ def upload_image_to_drive(file_bytes: bytes, filename: str, mimetype: str = "ima
     Upload ảnh bytes lên Google Drive
     Trả về URL công khai của ảnh
     """
-    # Tạo Drive service
-    service = get_drive_service()
+    access_token = get_access_token()
 
-    # Metadata cho file — chỉ dùng tên_ascii để tránh lỗi JSON
+    # Tên file an toàn
     safe_name = "".join(c for c in filename if c.isalnum() or c in ".-_ ").strip()
     if not safe_name:
         safe_name = "image.jpg"
 
-    file_metadata = {
+    # Metadata
+    metadata = {
         "name": safe_name,
         "parents": [GDRIVE_FOLDER_ID],
     }
 
-    # Upload file dạng binary
-    media = MediaIoBaseUpload(
-        io.BytesIO(file_bytes),
-        mimetype=mimetype,
-        resumable=True,
-    )
+    # Upload file
+    url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
 
-    file = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id",
-    ).execute()
+    # Dùng multipart form data
+    files = {
+        "metadata": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
+        "file": (safe_name, file_bytes, mimetype),
+    }
 
-    file_id = file["id"]
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+    }
+
+    response = requests.post(url, headers=headers, files=files)
+
+    if response.status_code != 200:
+        raise Exception(f"Google Drive API error: {response.status_code} - {response.text}")
+
+    file_id = response.json()["id"]
 
     # Set quyền public
-    service.permissions().create(
-        fileId=file_id,
-        body={"role": "reader", "type": "anyone"},
-    ).execute()
+    perm_url = f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions"
+    perm_data = {"role": "reader", "type": "anyone"}
+    requests.post(
+        perm_url,
+        headers={**headers, "Content-Type": "application/json"},
+        json=perm_data,
+    )
 
     # URL công khai
     public_url = f"https://drive.google.com/uc?export=view&id={file_id}"
