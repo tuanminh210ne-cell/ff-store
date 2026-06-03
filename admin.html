@@ -622,10 +622,18 @@
     async function uploadToGoogleDrive(base64Data, filename) {
       const token = sessionStorage.getItem("token");
 
-      // Gửi qua FormData để tránh lỗi JSON control character
+      // Chuyển base64 thành Blob để gửi dạng file
+      const byteString = atob(base64Data.split(",")[1] || base64Data);
+      const mimeType = base64Data.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: mimeType });
+
       const formData = new FormData();
-      formData.append("image", base64Data);
-      formData.append("filename", filename);
+      formData.append("file", blob, filename);
 
       const res = await fetch(`${BASE_URL}/api/admin/upload`, {
         method: "POST",

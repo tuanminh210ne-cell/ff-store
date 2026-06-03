@@ -4,7 +4,8 @@
 # ============================================================
 
 import os
-from fastapi import FastAPI, Depends, HTTPException, Request
+import base64
+from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -482,18 +483,23 @@ async def upload_image(
 ):
     try:
         form = await request.form()
-        image_data = form.get("image")
-        filename = form.get("filename", "image.jpg")
+        file = form.get("file")
 
-        if not image_data:
-            raise HTTPException(status_code=400, detail="Thiếu dữ liệu ảnh")
+        if not file:
+            raise HTTPException(status_code=400, detail="Thiếu file ảnh")
+
+        filename = file.filename or "image.jpg"
+        content = await file.read()
 
         # Log kích thước ảnh
-        data_size = len(str(image_data))
-        print(f"[UPLOAD] File: {filename}, Size: {data_size} chars")
+        print(f"[UPLOAD] File: {filename}, Size: {len(content)} bytes")
+
+        # Chuyển bytes thành base64
+        base64_data = base64.b64encode(content).decode("utf-8")
+        data_uri = f"data:{file.content_type or 'image/jpeg'};base64,{base64_data}"
 
         # Upload lên Google Drive
-        url = upload_image_to_drive(str(image_data), str(filename))
+        url = upload_image_to_drive(data_uri, filename)
 
         print(f"[UPLOAD] Success: {url}")
         return {"success": True, "url": url}
