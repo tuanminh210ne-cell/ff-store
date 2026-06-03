@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - FF Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .font-game { font-family: 'Orbitron', sans-serif; }
+    .font-body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0f0f0f; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    .toast-enter { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+</head>
+<body class="bg-[#0f0f0f] text-white font-body min-h-screen">
+
+  <!-- ============================================================ -->
+  <!-- HEADER -->
+  <!-- ============================================================ -->
+  <header class="bg-[#0f0f0f] border-b border-gray-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+          <span class="font-game text-white text-lg font-bold">FF</span>
+        </div>
+        <div>
+          <h1 class="font-game text-xl text-[#FFD700] leading-tight">FF STORE</h1>
+          <p class="text-xs text-gray-400">Quản trị hệ thống</p>
+        </div>
+      </a>
+      <div class="flex items-center gap-4">
+        <a href="index.html" class="text-gray-400 hover:text-white text-sm transition-colors">← Trang chủ</a>
+        <button id="btn-logout" onclick="logout()" class="hidden bg-gray-800 hover:bg-red-600 text-gray-300 hover:text-white text-sm px-4 py-2 rounded-lg transition-all">
+          Đăng xuất
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2"></div>
+
+  <!-- ============================================================ -->
+  <!-- PHẦN A: MÀN HÌNH ĐĂNG NHẬP -->
+  <!-- ============================================================ -->
+  <section id="login-screen" class="flex items-center justify-center min-h-[80vh] px-4">
+    <div class="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <span class="font-game text-white text-2xl font-bold">FF</span>
+        </div>
+        <h2 class="font-game text-2xl text-[#FFD700]">ĐĂNG NHẬP</h2>
+        <p class="text-gray-500 text-sm mt-1">Quản trị hệ thống FF Store</p>
+      </div>
+
+      <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
+        <!-- Username -->
+        <div>
+          <label class="block text-gray-400 text-sm mb-2">Tên đăng nhập</label>
+          <input type="text" id="login-username" required autocomplete="username"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none transition-colors"
+            placeholder="Nhập username...">
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label class="block text-gray-400 text-sm mb-2">Mật khẩu</label>
+          <div class="relative">
+            <input type="password" id="login-password" required autocomplete="current-password"
+              class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 pr-12 text-white focus:border-[#FFD700] focus:outline-none transition-colors"
+              placeholder="Nhập mật khẩu...">
+            <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
+              <svg id="eye-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg id="eye-closed" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Thông báo lỗi -->
+        <div id="login-error" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg"></div>
+
+        <!-- Nút đăng nhập -->
+        <button type="submit" id="btn-login" class="w-full bg-[#FF3333] hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-all">
+          Đăng nhập
+        </button>
+      </form>
+    </div>
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- PHẦN B: MÀN HÌNH QUẢN TRỊ -->
+  <!-- ============================================================ -->
+  <section id="admin-screen" class="hidden max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Khu vực 1: Form thêm acc mới -->
+    <div class="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-6">
+      <h2 class="font-game text-xl text-[#FFD700] mb-6">THÊM ACC MỚI</h2>
+
+      <form id="add-form" onsubmit="handleAddAccount(event)" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <!-- Tiêu đề -->
+        <div class="md:col-span-2">
+          <label class="block text-gray-400 text-sm mb-2">Tiêu đề <span class="text-red-400">*</span></label>
+          <input type="text" id="add-title" required
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none"
+            placeholder="VD: ACC FREE FIRE VIP FULL NHẪN">
+        </div>
+
+        <!-- Giá -->
+        <div>
+          <label class="block text-gray-400 text-sm mb-2">Giá (VNĐ) <span class="text-red-400">*</span></label>
+          <input type="number" id="add-price" required min="1"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none"
+            placeholder="VD: 500000">
+        </div>
+
+        <!-- Rank -->
+        <div>
+          <label class="block text-gray-400 text-sm mb-2">Rank / Level</label>
+          <select id="add-rank"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none">
+            <option value="">-- Chọn rank --</option>
+            <option value="Bạc">Bạc</option>
+            <option value="Vàng">Vàng</option>
+            <option value="Bạch Kim">Bạch Kim</option>
+            <option value="Kim Cương">Kim Cương</option>
+            <option value="Thách Đấu">Thách Đấu</option>
+          </select>
+        </div>
+
+        <!-- Đăng nhập qua -->
+        <div>
+          <label class="block text-gray-400 text-sm mb-2">Đăng nhập qua</label>
+          <select id="add-login"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none">
+            <option value="">-- Chọn phương thức --</option>
+            <option value="Facebook">Facebook</option>
+            <option value="Google">Google</option>
+            <option value="VK">VK</option>
+            <option value="Khách">Khách</option>
+          </select>
+        </div>
+
+        <!-- Link ảnh -->
+        <div>
+          <label class="block text-gray-400 text-sm mb-2">Link ảnh</label>
+          <input type="url" id="add-image"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none"
+            placeholder="https://...">
+        </div>
+
+        <!-- Vật phẩm VIP -->
+        <div class="md:col-span-2">
+          <label class="block text-gray-400 text-sm mb-2">Vật phẩm VIP</label>
+          <input type="text" id="add-vip"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none"
+            placeholder="VD: Nhẫn Kim Cương, Skin AK Rồng, Pet Max">
+        </div>
+
+        <!-- Mô tả -->
+        <div class="md:col-span-2">
+          <label class="block text-gray-400 text-sm mb-2">Mô tả chi tiết</label>
+          <textarea id="add-desc" rows="4"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none resize-none"
+            placeholder="Mô tả chi tiết về acc..."></textarea>
+        </div>
+
+        <!-- Nút thêm -->
+        <div class="md:col-span-2">
+          <button type="submit" id="btn-add"
+            class="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg transition-all">
+            + Thêm acc
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Khu vực 2: Bảng quản lý acc -->
+    <div class="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-game text-xl text-[#FFD700]">QUẢN LÝ ACC</h2>
+        <button onclick="loadAdminAccounts()" class="text-gray-400 hover:text-white text-sm transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Làm mới
+        </button>
+      </div>
+
+      <!-- Bảng desktop -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-700">
+              <th class="text-left text-gray-400 font-medium py-3 px-3">ID</th>
+              <th class="text-left text-gray-400 font-medium py-3 px-3">Tiêu đề</th>
+              <th class="text-right text-gray-400 font-medium py-3 px-3">Giá</th>
+              <th class="text-left text-gray-400 font-medium py-3 px-3">Rank</th>
+              <th class="text-left text-gray-400 font-medium py-3 px-3">Trạng thái</th>
+              <th class="text-center text-gray-400 font-medium py-3 px-3">Hành động</th>
+            </tr>
+          </thead>
+          <tbody id="accounts-table-body">
+            <tr><td colspan="6" class="text-center text-gray-500 py-8">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- JAVASCRIPT INLINE -->
+  <!-- ============================================================ -->
+  <script>
+    // ========================================================
+    // CẤU HÌNH — cùng domain với frontend
+    // ========================================================
+    const BASE_URL = window.location.origin;
+
+
+    // ========================================================
+    // Khởi tạo: kiểm tra token đã lưu
+    // ========================================================
+    document.addEventListener("DOMContentLoaded", () => {
+      const token = sessionStorage.getItem("token");
+      if (token) {
+        // Đã có token → thử vào màn admin
+        showAdminScreen();
+      }
+    });
+
+
+    // ========================================================
+    // Toggle show/hide password
+    // ========================================================
+    function togglePassword() {
+      const input = document.getElementById("login-password");
+      const eyeOpen = document.getElementById("eye-open");
+      const eyeClosed = document.getElementById("eye-closed");
+
+      if (input.type === "password") {
+        input.type = "text";
+        eyeOpen.classList.add("hidden");
+        eyeClosed.classList.remove("hidden");
+      } else {
+        input.type = "password";
+        eyeOpen.classList.remove("hidden");
+        eyeClosed.classList.add("hidden");
+      }
+    }
+
+
+    // ========================================================
+    // Xử lý đăng nhập
+    // ========================================================
+    async function handleLogin(e) {
+      e.preventDefault();
+
+      const username = document.getElementById("login-username").value.trim();
+      const password = document.getElementById("login-password").value;
+      const errorDiv = document.getElementById("login-error");
+      const btnLogin = document.getElementById("btn-login");
+
+      // Reset lỗi
+      errorDiv.classList.add("hidden");
+      btnLogin.disabled = true;
+      btnLogin.textContent = "Đang đăng nhập...";
+
+      try {
+        const res = await fetch(`${BASE_URL}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          // Sai thông tin đăng nhập
+          const msg = data.detail?.error || data.detail || "Đăng nhập thất bại";
+          errorDiv.textContent = msg;
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+
+        // Lưu token vào sessionStorage
+        sessionStorage.setItem("token", data.access_token);
+
+        // Chuyển sang màn quản trị
+        showAdminScreen();
+
+      } catch (err) {
+        errorDiv.textContent = "Không thể kết nối server. Vui lòng thử lại.";
+        errorDiv.classList.remove("hidden");
+      } finally {
+        btnLogin.disabled = false;
+        btnLogin.textContent = "Đăng nhập";
+      }
+    }
+
+
+    // ========================================================
+    // Đăng xuất
+    // ========================================================
+    function logout() {
+      sessionStorage.removeItem("token");
+      window.location.reload();
+    }
+
+
+    // ========================================================
+    // Hiển thị màn quản trị
+    // ========================================================
+    function showAdminScreen() {
+      document.getElementById("login-screen").classList.add("hidden");
+      document.getElementById("admin-screen").classList.remove("hidden");
+      document.getElementById("btn-logout").classList.remove("hidden");
+      loadAdminAccounts();
+    }
+
+
+    // ========================================================
+    // authFetch: wrapper fetch tự động thêm JWT header
+    // Nếu 401 → xóa token, hiện lại màn đăng nhập
+    // ========================================================
+    async function authFetch(url, options = {}) {
+      const token = sessionStorage.getItem("token");
+
+      // Thêm header Authorization
+      options.headers = {
+        ...options.headers,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      const res = await fetch(url, options);
+
+      // Nếu token hết hạn hoặc không hợp lệ
+      if (res.status === 401) {
+        sessionStorage.removeItem("token");
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        window.location.reload();
+        throw new Error("Unauthorized");
+      }
+
+      return res;
+    }
+
+
+    // ========================================================
+    // Tải danh sách acc cho bảng quản trị
+    // ========================================================
+    async function loadAdminAccounts() {
+      const tbody = document.getElementById("accounts-table-body");
+
+      try {
+        const res = await authFetch(`${BASE_URL}/api/accounts`);
+        const accounts = await res.json();
+
+        if (accounts.length === 0) {
+          tbody.innerHTML = `
+            <tr><td colspan="6" class="text-center text-gray-500 py-8">Chưa có acc nào.</td></tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = accounts.map(acc => `
+          <tr class="border-b border-gray-800 hover:bg-[#222] transition-colors">
+            <td class="py-3 px-3 text-gray-400">#${acc.id}</td>
+            <td class="py-3 px-3 text-white font-medium max-w-xs truncate">${escapeHtml(acc.title)}</td>
+            <td class="py-3 px-3 text-right text-[#FF3333] font-semibold">${acc.price.toLocaleString("vi-VN")}</td>
+            <td class="py-3 px-3 text-gray-300">${escapeHtml(acc.rank_level || "-")}</td>
+            <td class="py-3 px-3">
+              <span class="inline-block bg-green-500/20 text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full">
+                ${escapeHtml(acc.status)}
+              </span>
+            </td>
+            <td class="py-3 px-3 text-center">
+              <button onclick="markAsSold(${acc.id}, '${escapeHtml(acc.title).replace(/'/g, "\\'")}')"
+                class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
+                Đã Bán
+              </button>
+            </td>
+          </tr>
+        `).join("");
+
+      } catch (err) {
+        if (err.message !== "Unauthorized") {
+          tbody.innerHTML = `
+            <tr><td colspan="6" class="text-center text-red-400 py-8">Lỗi tải dữ liệu.</td></tr>
+          `;
+        }
+      }
+    }
+
+
+    // ========================================================
+    // Đánh dấu acc đã bán
+    // ========================================================
+    async function markAsSold(id, title) {
+      const confirmed = confirm(`Bạn có chắc muốn đánh dấu "${title}" (ID: ${id}) là ĐÃ BÁN?`);
+      if (!confirmed) return;
+
+      try {
+        const res = await authFetch(`${BASE_URL}/api/admin/sold/${id}`, {
+          method: "PUT",
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(`Đã đánh dấu acc #${id} là Đã bán`, "success");
+          loadAdminAccounts();
+        } else {
+          const msg = data.detail?.error || "Thao tác thất bại";
+          showToast(msg, "error");
+        }
+      } catch (err) {
+        if (err.message !== "Unauthorized") {
+          showToast("Lỗi kết nối server", "error");
+        }
+      }
+    }
+
+
+    // ========================================================
+    // Xử lý thêm acc mới
+    // ========================================================
+    async function handleAddAccount(e) {
+      e.preventDefault();
+
+      const title = document.getElementById("add-title").value.trim();
+      const price = parseInt(document.getElementById("add-price").value);
+      const rank = document.getElementById("add-rank").value;
+      const loginMethod = document.getElementById("add-login").value;
+      const imageUrl = document.getElementById("add-image").value.trim();
+      const vipItems = document.getElementById("add-vip").value.trim();
+      const description = document.getElementById("add-desc").value.trim();
+
+      // Validate phía client
+      if (!title) {
+        showToast("Tiêu đề không được để trống", "error");
+        return;
+      }
+      if (!price || price <= 0) {
+        showToast("Giá phải lớn hơn 0", "error");
+        return;
+      }
+
+      const btnAdd = document.getElementById("btn-add");
+      btnAdd.disabled = true;
+      btnAdd.textContent = "Đang thêm...";
+
+      try {
+        const res = await authFetch(`${BASE_URL}/api/admin/add`, {
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            price,
+            rank_level: rank || null,
+            login_method: loginMethod || null,
+            image_url: imageUrl || null,
+            vip_items: vipItems || null,
+            description: description || null,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(`Đã thêm acc thành công! (ID: ${data.id})`, "success");
+          document.getElementById("add-form").reset();
+          loadAdminAccounts();
+        } else {
+          const msg = data.detail?.error || data.detail || "Thêm acc thất bại";
+          showToast(msg, "error");
+        }
+      } catch (err) {
+        if (err.message !== "Unauthorized") {
+          showToast("Lỗi kết nối server", "error");
+        }
+      } finally {
+        btnAdd.disabled = false;
+        btnAdd.textContent = "+ Thêm acc";
+      }
+    }
+
+
+    // ========================================================
+    // Toast thông báo
+    // ========================================================
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toast-container");
+
+      const colors = type === "success"
+        ? "bg-green-600 border-green-500"
+        : "bg-red-600 border-red-500";
+
+      const icon = type === "success"
+        ? `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
+        : `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+
+      const toast = document.createElement("div");
+      toast.className = `toast-enter ${colors} border text-white text-sm px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 min-w-[280px]`;
+      toast.innerHTML = `${icon}<span>${escapeHtml(message)}</span>`;
+
+      container.appendChild(toast);
+
+      // Tự động xóa sau 4 giây
+      setTimeout(() => {
+        toast.style.transition = "opacity 0.3s";
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+
+    // ========================================================
+    // Escape HTML
+    // ========================================================
+    function escapeHtml(text) {
+      if (!text) return "";
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>

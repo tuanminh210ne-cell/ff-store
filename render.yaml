@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ff-store
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://ff-store.onrender.com
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false

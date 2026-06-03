@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết acc - FF Store</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    .font-game { font-family: 'Orbitron', sans-serif; }
+    .font-body { font-family: 'Inter', sans-serif; }
+
+    /* --- Spinner loading --- */
+    .spinner {
+      border: 4px solid #333;
+      border-top: 4px solid #FF3333;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* --- Nút MUA NGAY pulse --- */
+    .btn-pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 100, 0, 0.6); }
+      50% { box-shadow: 0 0 0 12px rgba(255, 100, 0, 0); }
+    }
+
+    /* --- Gradient nút mua --- */
+    .btn-buy-gradient {
+      background: linear-gradient(135deg, #FF3333 0%, #FF6600 100%);
+    }
+
+    /* --- Sticky image trên desktop --- */
+    @media (min-width: 768px) {
+      .sticky-image {
+        position: sticky;
+        top: 80px;
+      }
+    }
+
+    /* --- Scrollbar --- */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0f0f0f; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+  </style>
+</head>
+
+<body class="bg-[#0f0f0f] text-white font-body min-h-screen">
+
+  <!-- ============================================================ -->
+  <!-- HEADER (giống index.html) -->
+  <!-- ============================================================ -->
+  <header class="bg-[#0f0f0f] border-b border-gray-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+          <span class="font-game text-white text-lg font-bold">FF</span>
+        </div>
+        <div>
+          <h1 class="font-game text-xl text-[#FFD700] leading-tight">FF STORE</h1>
+          <p class="text-xs text-gray-400">Acc Free Fire Uy Tín</p>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="index.html" class="text-gray-400 hover:text-white transition-colors">Trang Chủ</a>
+        <a href="admin.html" class="text-gray-400 hover:text-white transition-colors">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+
+  <!-- ============================================================ -->
+  <!-- NỘI DUNG CHÍNH (JS sẽ render vào đây) -->
+  <!-- ============================================================ -->
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    <div id="detail-content">
+      <!-- Loading spinner mặc định -->
+      <div class="flex flex-col items-center justify-center py-32">
+        <div class="spinner mb-4"></div>
+        <p class="text-gray-500">Đang tải thông tin acc...</p>
+      </div>
+    </div>
+  </main>
+
+
+  <!-- ============================================================ -->
+  <!-- FOOTER -->
+  <!-- ============================================================ -->
+  <footer class="bg-[#111] border-t border-gray-800 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-center text-gray-500 text-xs">
+      &copy; 2026 FF Store. Mọi quyền được bảo lưu.
+    </div>
+  </footer>
+
+
+  <!-- ============================================================ -->
+  <!-- JAVASCRIPT INLINE -->
+  <!-- ============================================================ -->
+  <script>
+    // ========================================================
+    // CẤU HÌNH: Thay link Messenger của bạn vào đây
+    // Cách lấy link: Vào trang Facebook → Nhắn tin → Copy link
+    // Hoặc dùng: https://m.me/TEN_TRANG_CUA_BAN
+    // ========================================================
+    const MESSENGER_LINK = "https://m.me/thuuha.dhh";
+
+    // Backend API — cùng domain với frontend
+    const BASE_URL = window.location.origin;
+
+
+    // ========================================================
+    // Khởi tạo khi trang load
+    // ========================================================
+    document.addEventListener("DOMContentLoaded", () => {
+      // Lấy id từ URL: detail.html?id=1
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+
+      // Nếu không có id → redirect về trang chủ
+      if (!id) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      // Gọi API lấy chi tiết acc
+      loadAccountDetail(id);
+    });
+
+
+    // ========================================================
+    // Fetch API và render chi tiết acc
+    // ========================================================
+    async function loadAccountDetail(id) {
+      const container = document.getElementById("detail-content");
+
+      try {
+        const response = await fetch(`${BASE_URL}/api/accounts/${id}`);
+
+        // Nếu acc không tồn tại (404)
+        if (response.status === 404) {
+          container.innerHTML = renderNotFound();
+          return;
+        }
+
+        // Nếu server lỗi
+        if (!response.ok) {
+          throw new Error(`Server lỗi: ${response.status}`);
+        }
+
+        // Parse dữ liệu
+        const acc = await response.json();
+
+        // Cập nhật title trang
+        document.title = `${acc.title} - FF Store`;
+
+        // Render chi tiết
+        container.innerHTML = renderDetail(acc);
+
+      } catch (error) {
+        console.error("Lỗi:", error);
+        container.innerHTML = renderError();
+      }
+    }
+
+
+    // ========================================================
+    // Render giao diện chi tiết acc
+    // ========================================================
+    function renderDetail(acc) {
+      // Format giá tiền
+      const priceFormatted = acc.price.toLocaleString("vi-VN");
+
+      // Badge trạng thái
+      const statusBadge = acc.status === "Đang bán"
+        ? `<span class="inline-block bg-green-500/20 border border-green-400 text-green-300 text-sm font-semibold px-4 py-1.5 rounded-full">✓ ${escapeHtml(acc.status)}</span>`
+        : `<span class="inline-block bg-red-500/20 border border-red-400 text-red-300 text-sm font-semibold px-4 py-1.5 rounded-full">✗ ${escapeHtml(acc.status)}</span>`;
+
+      // Badge rank màu
+      const rankBadge = getRankBadgeHTML(acc.rank_level);
+
+      // Danh sách VIP items (tách chuỗi theo dấu phẩy)
+      const vipListHTML = acc.vip_items
+        ? acc.vip_items.split(",").map(item => `
+            <li class="flex items-start gap-2">
+              <span class="text-[#FFD700] mt-0.5">✦</span>
+              <span class="text-gray-300">${escapeHtml(item.trim())}</span>
+            </li>
+          `).join("")
+        : '<li class="text-gray-500">Không có thông tin</li>';
+
+      // Encode tin nhắn Messenger
+      const messengerMsg = encodeURIComponent(
+        `Admin ơi, mình muốn mua nick Free Fire mã số #${acc.id}, giá ${priceFormatted} VNĐ. Acc này đăng nhập qua ${acc.login_method || "N/A"} đúng không?`
+      );
+      const messengerURL = `${MESSENGER_LINK}?text=${messengerMsg}`;
+
+      // Ảnh fallback
+      const imgSrc = acc.image_url || "https://placehold.co/800x600/1a1a1a/666?text=No+Image";
+
+      return `
+        <!-- Nút quay lại -->
+        <a href="index.html" class="inline-flex items-center gap-2 text-gray-400 hover:text-[#FFD700] transition-colors mb-6">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Quay lại danh sách
+        </a>
+
+        <!-- Layout 2 cột -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+
+          <!-- CỘT TRÁI: Ảnh (sticky trên desktop) -->
+          <div class="sticky-image">
+            <div class="rounded-2xl overflow-hidden border border-gray-800 bg-[#1a1a1a]">
+              <img
+                src="${imgSrc}"
+                alt="${escapeHtml(acc.title)}"
+                class="w-full h-auto object-cover"
+                onerror="this.onerror=null; this.src='https://placehold.co/800x600/1a1a1a/666?text=No+Image'"
+              />
+            </div>
+            <!-- Mã acc -->
+            <p class="text-gray-600 text-xs mt-3 text-center">Mã acc: #${acc.id}</p>
+          </div>
+
+          <!-- CỘT PHẢI: Thông tin -->
+          <div class="space-y-6">
+
+            <!-- Tiêu đề -->
+            <h1 class="font-game text-2xl md:text-3xl text-white leading-tight">
+              ${escapeHtml(acc.title)}
+            </h1>
+
+            <!-- Giá tiền (to, nổi bật) -->
+            <div class="flex items-end gap-3">
+              <span class="font-game text-4xl md:text-5xl text-[#FF3333] font-bold">
+                ${priceFormatted}
+              </span>
+              <span class="text-gray-400 text-lg mb-1">VNĐ</span>
+            </div>
+
+            <!-- Trạng thái + Rank -->
+            <div class="flex flex-wrap items-center gap-3">
+              ${statusBadge}
+              ${rankBadge}
+            </div>
+
+            <!-- Thông số kỹ thuật -->
+            <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 p-5 space-y-4">
+              <h3 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">Thông tin acc</h3>
+
+              <!-- Rank / Level -->
+              <div class="flex items-center justify-between py-2 border-b border-gray-800">
+                <span class="text-gray-400 text-sm">Rank / Level</span>
+                <span class="text-white font-medium">${escapeHtml(acc.rank_level || "Chưa rõ")}</span>
+              </div>
+
+              <!-- Đăng nhập qua -->
+              <div class="flex items-center justify-between py-2 border-b border-gray-800">
+                <span class="text-gray-400 text-sm">Đăng nhập qua</span>
+                <span class="text-white font-medium flex items-center gap-2">
+                  ${getLoginIcon(acc.login_method)}
+                  ${escapeHtml(acc.login_method || "Chưa rõ")}
+                </span>
+              </div>
+
+              <!-- Trạng thái -->
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-400 text-sm">Trạng thái</span>
+                ${statusBadge}
+              </div>
+            </div>
+
+            <!-- Vật phẩm VIP -->
+            <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 p-5">
+              <h3 class="text-white font-semibold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span class="text-[#FFD700]">★</span> Vật phẩm VIP
+              </h3>
+              <ul class="space-y-2.5">
+                ${vipListHTML}
+              </ul>
+            </div>
+
+            <!-- Mô tả -->
+            ${acc.description ? `
+            <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 p-5">
+              <h3 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">Mô tả chi tiết</h3>
+              <p class="text-gray-300 text-sm leading-relaxed whitespace-pre-line">${escapeHtml(acc.description)}</p>
+            </div>
+            ` : ""}
+
+            <!-- NÚT MUA NGAY -->
+            <div class="pt-4 space-y-3">
+              <a href="${messengerURL}" target="_blank" rel="noopener noreferrer"
+                 class="btn-buy-gradient btn-pulse flex items-center justify-center gap-3 text-white font-bold text-lg py-4 rounded-xl transition-all hover:brightness-110 w-full">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.936 1.525 5.54 3.89 7.152V22l3.586-1.968C10.37 20.29 11.17 20.43 12 20.43c5.523 0 10-4.098 10-9.187C22 6.145 17.523 2 12 2zm1.01 12.188l-2.72-2.88L5.607 14.18l5.94-6.312 2.72 2.88L19.393 7.88l-5.94 6.312-.443.996z"/>
+                </svg>
+                MUA NGAY
+              </a>
+
+              <a href="index.html"
+                 class="block text-center text-gray-400 hover:text-[#FFD700] transition-colors text-sm py-2">
+                ← Quay lại danh sách
+              </a>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+
+    // ========================================================
+    // Render trang "Acc không tồn tại"
+    // ========================================================
+    function renderNotFound() {
+      return `
+        <div class="flex flex-col items-center justify-center py-24 text-center">
+          <svg class="w-20 h-20 text-gray-700 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <h2 class="font-game text-2xl text-[#FF3333] mb-3">Acc này không tồn tại</h2>
+          <p class="text-gray-500 mb-6 max-w-md">
+            Acc bạn tìm kiếm không tồn tại hoặc đã được bán. Vui lòng quay lại trang chủ để xem acc khác.
+          </p>
+          <a href="index.html"
+             class="bg-[#FF3333] hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+            ← Về trang chủ
+          </a>
+        </div>
+      `;
+    }
+
+
+    // ========================================================
+    // Render trang lỗi server
+    // ========================================================
+    function renderError() {
+      return `
+        <div class="flex flex-col items-center justify-center py-24 text-center">
+          <svg class="w-20 h-20 text-red-800 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          <h2 class="font-game text-2xl text-red-400 mb-3">Lỗi kết nối</h2>
+          <p class="text-gray-500 mb-6">Không thể kết nối đến server. Vui lòng thử lại sau.</p>
+          <a href="index.html"
+             class="bg-[#FF3333] hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+            ← Về trang chủ
+          </a>
+        </div>
+      `;
+    }
+
+
+    // ========================================================
+    // Badge màu theo rank
+    // ========================================================
+    function getRankBadgeHTML(rankLevel) {
+      if (!rankLevel) return "";
+      const rank = rankLevel.toLowerCase();
+
+      let bg, text, label;
+      if (rank.includes("kim cương") || rank.includes("kim cuong") || rank.includes("diamond")) {
+        bg = "bg-cyan-500/20 border-cyan-400"; text = "text-cyan-300"; label = "Kim Cương";
+      } else if (rank.includes("bạch kim") || rank.includes("bach kim") || rank.includes("platinum")) {
+        bg = "bg-purple-500/20 border-purple-400"; text = "text-purple-300"; label = "Bạch Kim";
+      } else if (rank.includes("vàng") || rank.includes("vang") || rank.includes("gold")) {
+        bg = "bg-yellow-500/20 border-yellow-400"; text = "text-yellow-300"; label = "Vàng";
+      } else if (rank.includes("bạc") || rank.includes("bac") || rank.includes("silver")) {
+        bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300"; label = "Bạc";
+      } else if (rank.includes("thách đấu") || rank.includes("thach dau") || rank.includes("heroic")) {
+        bg = "bg-red-500/20 border-red-400"; text = "text-red-300"; label = "Thách Đấu";
+      } else {
+        bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300"; label = rankLevel;
+      }
+
+      return `<span class="${bg} ${text} border text-sm font-semibold px-3 py-1 rounded-full">${escapeHtml(label)}</span>`;
+    }
+
+
+    // ========================================================
+    // Icon cho phương thức đăng nhập
+    // ========================================================
+    function getLoginIcon(method) {
+      if (!method) return "";
+      const m = method.toLowerCase();
+      if (m.includes("facebook")) {
+        return `<svg class="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
+      }
+      if (m.includes("google")) {
+        return `<svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/></svg>`;
+      }
+      return `<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`;
+    }
+
+
+    // ========================================================
+    // Escape HTML
+    // ========================================================
+    function escapeHtml(text) {
+      if (!text) return "";
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FF Store - Mua Bán Acc Free Fire Uy Tín</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Orbitron cho phong cách game -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <style>
+    /* --- Font game --- */
+    .font-game {
+      font-family: 'Orbitron', sans-serif;
+    }
+    .font-body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* --- Hiệu ứng glow cho chữ hero --- */
+    .text-glow {
+      text-shadow:
+        0 0 10px rgba(255, 51, 51, 0.8),
+        0 0 20px rgba(255, 51, 51, 0.6),
+        0 0 40px rgba(255, 51, 51, 0.4),
+        0 0 80px rgba(255, 51, 51, 0.2);
+    }
+
+    /* --- Gradient hero banner --- */
+    .hero-gradient {
+      background: linear-gradient(135deg, #1a0000 0%, #0f0f0f 40%, #330000 70%, #0f0f0f 100%);
+    }
+
+    /* --- Skeleton loading animation --- */
+    .skeleton {
+      background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* --- Scrollbar dark --- */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0f0f0f; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* --- Card hover effect --- */
+    .card-hover {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 30px rgba(255, 51, 51, 0.2);
+    }
+
+    /* --- Nút glow --- */
+    .btn-glow {
+      transition: all 0.3s ease;
+    }
+    .btn-glow:hover {
+      box-shadow: 0 0 15px rgba(255, 51, 51, 0.5);
+    }
+  </style>
+</head>
+
+<body class="bg-[#0f0f0f] text-white font-body min-h-screen flex flex-col">
+
+  <!-- ============================================================ -->
+  <!-- HEADER -->
+  <!-- ============================================================ -->
+  <header class="bg-[#0f0f0f] border-b border-gray-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+
+      <!-- Logo + Tên web -->
+      <a href="index.html" class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+          <span class="font-game text-white text-lg font-bold">FF</span>
+        </div>
+        <div>
+          <h1 class="font-game text-xl text-[#FFD700] leading-tight">FF STORE</h1>
+          <p class="text-xs text-gray-400">Acc Free Fire Uy Tín</p>
+        </div>
+      </a>
+
+      <!-- Điều hướng (Desktop) -->
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="index.html" class="text-[#FFD700] font-semibold border-b-2 border-[#FFD700] pb-1">
+          Trang Chủ
+        </a>
+        <a href="admin.html" class="text-gray-400 hover:text-white transition-colors">
+          Admin
+        </a>
+      </nav>
+
+      <!-- Menu mobile -->
+      <button id="mobile-menu-btn" class="md:hidden text-gray-400 hover:text-white">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Menu mobile dropdown -->
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-800 bg-[#0f0f0f]">
+      <a href="index.html" class="block px-4 py-3 text-[#FFD700] font-semibold">Trang Chủ</a>
+      <a href="admin.html" class="block px-4 py-3 text-gray-400 hover:text-white">Admin</a>
+    </div>
+  </header>
+
+
+  <!-- ============================================================ -->
+  <!-- HERO BANNER -->
+  <!-- ============================================================ -->
+  <section class="hero-gradient py-16 md:py-24 relative overflow-hidden">
+    <!-- Hiệu ứng background mờ -->
+    <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;none&quot; fill-rule=&quot;evenodd&quot;%3E%3Cg fill=&quot;%23ff3333&quot; fill-opacity=&quot;0.4&quot;%3E%3Cpath d=&quot;M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z&quot;/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
+
+    <div class="max-w-7xl mx-auto px-4 text-center relative z-10">
+      <h2 class="font-game text-4xl md:text-6xl lg:text-7xl text-[#FF3333] text-glow mb-4 leading-tight">
+        FREE FIRE
+      </h2>
+      <p class="font-game text-xl md:text-2xl text-[#FFD700] mb-2">
+        CỬA HÀNG ACC UY TÍN #1
+      </p>
+      <p class="text-gray-400 text-sm md:text-base max-w-xl mx-auto mb-8">
+        Chuyên mua bán acc Free Fire VIP, full nhẫn, skin hiếm. Giao dịch nhanh chóng, an toàn, hỗ trợ 24/7.
+      </p>
+      <a href="#account-list" class="inline-block bg-[#FF3333] hover:bg-red-700 text-white font-bold px-8 py-3 rounded-lg btn-glow transition-all">
+        XEM DANH SÁCH ACC
+      </a>
+    </div>
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- DANH SÁCH ACC -->
+  <!-- ============================================================ -->
+  <main class="flex-1 max-w-7xl mx-auto px-4 py-12 w-full">
+    <div class="flex items-center justify-between mb-8">
+      <h3 class="font-game text-2xl text-[#FFD700]">ACC ĐANG BÁN</h3>
+      <span id="account-count" class="text-gray-500 text-sm"></span>
+    </div>
+
+    <!-- Grid card — JS sẽ render vào đây -->
+    <div id="account-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <!-- Card sẽ được render bởi main.js -->
+    </div>
+  </main>
+
+
+  <!-- ============================================================ -->
+  <!-- FOOTER -->
+  <!-- ============================================================ -->
+  <footer class="bg-[#111] border-t border-gray-800 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+        <!-- Cột 1: Logo + giới thiệu -->
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+              <span class="font-game text-white text-sm font-bold">FF</span>
+            </div>
+            <span class="font-game text-lg text-[#FFD700]">FF STORE</span>
+          </div>
+          <p class="text-gray-400 text-sm">
+            Chuyên mua bán acc Free Fire uy tín, giá rẻ. Giao dịch tự động 24/7, hỗ trợ tận tình.
+          </p>
+        </div>
+
+        <!-- Cột 2: Liên hệ -->
+        <div>
+          <h4 class="text-white font-semibold mb-4">LIÊN HỆ</h4>
+          <ul class="space-y-2 text-gray-400 text-sm">
+            <li>📞 Zalo: 0123.456.789</li>
+            <li>📧 Email: support@ffstore.vn</li>
+            <li>⏰ Hỗ trợ: 8:00 - 23:00 hàng ngày</li>
+          </ul>
+        </div>
+
+        <!-- Cột 3: Mạng xã hội -->
+        <div>
+          <h4 class="text-white font-semibold mb-4">KẾT NỐI</h4>
+          <a href="https://m.me/thuuha.dhh" target="_blank"
+             class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.936 1.525 5.54 3.89 7.152V22l3.586-1.968C10.37 20.29 11.17 20.43 12 20.43c5.523 0 10-4.098 10-9.187C22 6.145 17.523 2 12 2zm1.01 12.188l-2.72-2.88L5.607 14.18l5.94-6.312 2.72 2.88L19.393 7.88l-5.94 6.312-.443.996z"/>
+            </svg>
+            Chat Messenger
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Copyright -->
+      <div class="border-t border-gray-800 mt-8 pt-6 text-center text-gray-500 text-xs">
+        &copy; 2026 FF Store. Mọi quyền được bảo lưu.
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ============================================================ -->
+  <!-- SCRIPT -->
+  <!-- ============================================================ -->
+  <!-- Toggle mobile menu -->
+  <script>
+    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
+  </script>
+
+  <!-- Main JS: render danh sách acc -->
+  <script src="main.js"></script>
+
+</body>
+</html>
