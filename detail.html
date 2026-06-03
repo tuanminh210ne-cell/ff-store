@@ -261,10 +261,10 @@
             <div class="bg-[#1a1a1a] rounded-xl border border-gray-800 p-5 space-y-4">
               <h3 class="text-white font-semibold text-sm uppercase tracking-wider mb-4">Thông tin acc</h3>
 
-              <!-- Rank / Level -->
+              <!-- Level -->
               <div class="flex items-center justify-between py-2 border-b border-gray-800">
-                <span class="text-gray-400 text-sm">Rank / Level</span>
-                <span class="text-white font-medium">${escapeHtml(acc.rank_level || "Chưa rõ")}</span>
+                <span class="text-gray-400 text-sm">Level</span>
+                <span class="text-white font-medium">${acc.rank_level ? "Lv " + acc.rank_level : "Chưa rõ"}</span>
               </div>
 
               <!-- Đăng nhập qua -->
@@ -372,21 +372,24 @@
     // ========================================================
     function getRankBadgeHTML(rankLevel) {
       if (!rankLevel) return "";
-      const rank = rankLevel.toLowerCase();
 
+      const level = parseInt(rankLevel);
       let bg, text, label;
-      if (rank.includes("kim cương") || rank.includes("kim cuong") || rank.includes("diamond")) {
-        bg = "bg-cyan-500/20 border-cyan-400"; text = "text-cyan-300"; label = "Kim Cương";
-      } else if (rank.includes("bạch kim") || rank.includes("bach kim") || rank.includes("platinum")) {
-        bg = "bg-purple-500/20 border-purple-400"; text = "text-purple-300"; label = "Bạch Kim";
-      } else if (rank.includes("vàng") || rank.includes("vang") || rank.includes("gold")) {
-        bg = "bg-yellow-500/20 border-yellow-400"; text = "text-yellow-300"; label = "Vàng";
-      } else if (rank.includes("bạc") || rank.includes("bac") || rank.includes("silver")) {
-        bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300"; label = "Bạc";
-      } else if (rank.includes("thách đấu") || rank.includes("thach dau") || rank.includes("heroic")) {
-        bg = "bg-red-500/20 border-red-400"; text = "text-red-300"; label = "Thách Đấu";
+
+      if (!isNaN(level)) {
+        if (level >= 70) {
+          bg = "bg-cyan-500/20 border-cyan-400"; text = "text-cyan-300";
+        } else if (level >= 50) {
+          bg = "bg-purple-500/20 border-purple-400"; text = "text-purple-300";
+        } else if (level >= 30) {
+          bg = "bg-yellow-500/20 border-yellow-400"; text = "text-yellow-300";
+        } else {
+          bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300";
+        }
+        label = `Lv ${level}`;
       } else {
-        bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300"; label = rankLevel;
+        bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300";
+        label = rankLevel;
       }
 
       return `<span class="${bg} ${text} border text-sm font-semibold px-3 py-1 rounded-full">${escapeHtml(label)}</span>`;

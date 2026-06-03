@@ -129,38 +129,32 @@ function renderCard(acc) {
 
 
 // ============================================================
-// Tạo badge màu theo cấp độ rank
+// Tạo badge hiển thị Level
 // ============================================================
 function getRankBadge(rankLevel) {
   if (!rankLevel) return "";
 
-  const rank = rankLevel.toLowerCase();
-
-  // Xác định màu theo rank
+  const level = parseInt(rankLevel);
   let bgClass, textClass, label;
 
-  if (rank.includes("kim cương") || rank.includes("kim cuong") || rank.includes("diamond")) {
-    bgClass = "bg-cyan-500/20 border-cyan-400";
-    textClass = "text-cyan-300";
-    label = "Kim Cương";
-  } else if (rank.includes("bạch kim") || rank.includes("bach kim") || rank.includes("platinum")) {
-    bgClass = "bg-purple-500/20 border-purple-400";
-    textClass = "text-purple-300";
-    label = "Bạch Kim";
-  } else if (rank.includes("vàng") || rank.includes("vang") || rank.includes("gold")) {
-    bgClass = "bg-yellow-500/20 border-yellow-400";
-    textClass = "text-yellow-300";
-    label = "Vàng";
-  } else if (rank.includes("bạc") || rank.includes("bac") || rank.includes("silver")) {
-    bgClass = "bg-gray-500/20 border-gray-400";
-    textClass = "text-gray-300";
-    label = "Bạc";
-  } else if (rank.includes("thách đấu") || rank.includes("thach dau") || rank.includes("heroic")) {
-    bgClass = "bg-red-500/20 border-red-400";
-    textClass = "text-red-300";
-    label = "Thách Đấu";
+  if (!isNaN(level)) {
+    // Level là số
+    if (level >= 70) {
+      bgClass = "bg-cyan-500/20 border-cyan-400";
+      textClass = "text-cyan-300";
+    } else if (level >= 50) {
+      bgClass = "bg-purple-500/20 border-purple-400";
+      textClass = "text-purple-300";
+    } else if (level >= 30) {
+      bgClass = "bg-yellow-500/20 border-yellow-400";
+      textClass = "text-yellow-300";
+    } else {
+      bgClass = "bg-gray-500/20 border-gray-400";
+      textClass = "text-gray-300";
+    }
+    label = `Lv ${level}`;
   } else {
-    // Rank khác (Lv xx)
+    // Level là text cũ (tương thích ngược)
     bgClass = "bg-gray-500/20 border-gray-400";
     textClass = "text-gray-300";
     label = rankLevel;
