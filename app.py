@@ -113,6 +113,9 @@ def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # ============================================================
 @app.on_event("startup")
 def startup():
+    # Reset database nếu cần (thêm env RESET_DB=true rồi deploy)
+    if os.getenv("RESET_DB") == "true":
+        Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
