@@ -35,6 +35,7 @@ class AccountDetail(BaseModel):
     login_method: Optional[str] = None
     status: str
     image_url: Optional[str] = None
+    gallery_images: Optional[str] = None  # JSON array string
     description: Optional[str] = None
     created_at: Optional[datetime] = None
 
@@ -52,6 +53,7 @@ class AccountCreate(BaseModel):
     vip_items: Optional[str] = None
     login_method: Optional[str] = None
     image_url: Optional[str] = None
+    gallery_images: Optional[str] = None  # JSON array string
     description: Optional[str] = None
 
     @validator("title")

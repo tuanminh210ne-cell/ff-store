@@ -164,6 +164,20 @@
           </div>
         </div>
 
+        <!-- Album ảnh (tối đa 100) -->
+        <div class="md:col-span-2">
+          <label class="block text-gray-400 text-sm mb-2">Album ảnh acc (tối đa 100 ảnh)</label>
+          <div class="flex gap-2 items-start">
+            <input type="file" id="add-gallery-files" accept="image/*" multiple onchange="handleGalleryUpload(this)" class="hidden">
+            <button type="button" onclick="document.getElementById('add-gallery-files').click()"
+              class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-3 rounded-lg transition-colors whitespace-nowrap">
+              🖼️ Chọn ảnh
+            </button>
+            <div id="gallery-info" class="text-gray-500 text-sm py-3">Chưa có ảnh nào</div>
+          </div>
+          <div id="gallery-preview" class="flex flex-wrap gap-2 mt-2"></div>
+        </div>
+
         <!-- Vật phẩm VIP -->
         <div class="md:col-span-2">
           <label class="block text-gray-400 text-sm mb-2">Vật phẩm VIP</label>
@@ -370,7 +384,7 @@
       const tbody = document.getElementById("accounts-table-body");
 
       try {
-        const res = await authFetch(`${BASE_URL}/api/accounts`);
+        const res = await authFetch(`${BASE_URL}/api/admin/accounts`);
         const accounts = await res.json();
 
         if (accounts.length === 0) {
@@ -381,21 +395,22 @@
         }
 
         tbody.innerHTML = accounts.map(acc => `
-          <tr class="border-b border-gray-800 hover:bg-[#222] transition-colors">
+          <tr class="border-b border-gray-800 hover:bg-[#222] transition-colors ${acc.status === 'Đã bán' ? 'opacity-60' : ''}">
             <td class="py-3 px-3 text-gray-400">#${acc.id}</td>
             <td class="py-3 px-3 text-white font-medium max-w-xs truncate">${escapeHtml(acc.title)}</td>
             <td class="py-3 px-3 text-right text-[#FF3333] font-semibold">${acc.price.toLocaleString("vi-VN")}</td>
-            <td class="py-3 px-3 text-gray-300">${escapeHtml(acc.rank_level || "-")}</td>
+            <td class="py-3 px-3 text-gray-300">${acc.rank_level ? "Lv " + acc.rank_level : "-"}</td>
             <td class="py-3 px-3">
-              <span class="inline-block bg-green-500/20 text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full">
+              <span class="inline-block ${acc.status === 'Đang bán' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} text-xs font-semibold px-2.5 py-1 rounded-full">
                 ${escapeHtml(acc.status)}
               </span>
             </td>
             <td class="py-3 px-3 text-center">
+              ${acc.status === 'Đang bán' ? `
               <button onclick="markAsSold(${acc.id}, '${escapeHtml(acc.title).replace(/'/g, "\\'")}')"
                 class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
                 Đã Bán
-              </button>
+              </button>` : ''}
               <button onclick="deleteAccount(${acc.id}, '${escapeHtml(acc.title).replace(/'/g, "\\'")}')"
                 class="bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ml-1">
                 Xóa
@@ -469,6 +484,70 @@
           showToast("Lỗi kết nối server", "error");
         }
       }
+    }
+
+
+    // ========================================================
+    // Gallery images storage
+    // ========================================================
+    let galleryImages = [];
+
+    function handleGalleryUpload(input) {
+      const files = Array.from(input.files);
+      if (galleryImages.length + files.length > 100) {
+        showToast("Tối đa 100 ảnh!", "error");
+        return;
+      }
+
+      let loaded = 0;
+      files.forEach(file => {
+        if (file.size > 5 * 1024 * 1024) {
+          showToast(`Ảnh ${file.name} quá lớn (tối đa 5MB)`, "error");
+          loaded++;
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement("canvas");
+            const maxSize = 800;
+            let w = img.width, h = img.height;
+            if (w > maxSize || h > maxSize) {
+              if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+              else { w = Math.round(w * maxSize / h); h = maxSize; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+            galleryImages.push(canvas.toDataURL("image/jpeg", 0.7));
+            loaded++;
+            updateGalleryPreview();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+      input.value = "";
+    }
+
+    function updateGalleryPreview() {
+      const container = document.getElementById("gallery-preview");
+      const info = document.getElementById("gallery-info");
+      info.textContent = `${galleryImages.length} ảnh đã chọn`;
+      container.innerHTML = galleryImages.map((img, i) => `
+        <div class="relative group">
+          <img src="${img}" class="w-16 h-16 object-cover rounded-lg border border-gray-700">
+          <button onclick="removeGalleryImage(${i})" type="button"
+            class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 text-xs hidden group-hover:flex items-center justify-center">×</button>
+        </div>
+      `).join("");
+    }
+
+    function removeGalleryImage(index) {
+      galleryImages.splice(index, 1);
+      updateGalleryPreview();
     }
 
 
@@ -565,6 +644,7 @@
             rank_level: rank || null,
             login_method: loginMethod || null,
             image_url: imageUrl || null,
+            gallery_images: galleryImages.length > 0 ? JSON.stringify(galleryImages) : null,
             vip_items: vipItems || null,
             description: description || null,
           }),
@@ -576,6 +656,9 @@
           showToast(`Đã thêm acc thành công! (ID: ${data.id})`, "success");
           document.getElementById("add-form").reset();
           document.getElementById("image-preview").classList.add("hidden");
+          galleryImages = [];
+          document.getElementById("gallery-preview").innerHTML = "";
+          document.getElementById("gallery-info").textContent = "Chưa có ảnh nào";
           loadAdminAccounts();
         } else {
           // Xử lý nhiều loại lỗi khác nhau

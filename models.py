@@ -26,11 +26,12 @@ class Account(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(Text, nullable=False)           # Tên acc
     price = Column(Integer, nullable=False)         # Giá tiền (VNĐ)
-    rank_level = Column(Text)                       # Rank / Level
+    rank_level = Column(Text)                       # Level (số)
     vip_items = Column(Text)                        # Danh sách vật phẩm VIP
     login_method = Column(Text)                     # Cách đăng nhập (Facebook/Google)
     status = Column(Text, default="Đang bán")       # Trạng thái mặc định
-    image_url = Column(Text)                        # Đường dẫn ảnh
+    image_url = Column(Text)                        # Ảnh bìa (hiển thị ở danh sách)
+    gallery_images = Column(Text)                   # Album ảnh (JSON array, tối đa 100)
     description = Column(Text)                      # Mô tả chi tiết
     created_at = Column(DateTime, default=datetime.now)  # Thời gian tạo
 

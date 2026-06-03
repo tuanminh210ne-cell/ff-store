@@ -209,6 +209,43 @@
       // Ảnh fallback
       const imgSrc = acc.image_url || "https://placehold.co/800x600/1a1a1a/666?text=No+Image";
 
+      // Parse gallery images
+      let gallery = [];
+      try {
+        if (acc.gallery_images) gallery = JSON.parse(acc.gallery_images);
+      } catch(e) {}
+
+      // Ảnh bìa + album gộp lại cho lightbox
+      const allImages = [imgSrc, ...gallery];
+
+      // Gallery thumbnails HTML
+      const galleryHTML = gallery.length > 0 ? `
+        <div class="grid grid-cols-4 gap-2 mt-3">
+          ${gallery.map((img, i) => `
+            <div class="aspect-square rounded-lg overflow-hidden border border-gray-700 cursor-pointer hover:border-[#FF3333] transition-colors ${i >= 8 ? 'hidden' : ''}" onclick="openLightbox(${i + 1})">
+              <img src="${img}" class="w-full h-full object-cover" alt="Ảnh ${i + 2}">
+            </div>
+          `).join("")}
+        </div>
+        ${gallery.length > 8 ? `<p class="text-gray-500 text-xs mt-2 text-center">+${gallery.length - 8} ảnh khác</p>` : ''}
+        <p class="text-gray-500 text-xs mt-1 text-center">${gallery.length + 1} ảnh · Nhấn để xem lớn</p>
+      ` : '';
+
+      // Lightbox HTML
+      const lightboxHTML = `
+        <div id="lightbox" class="fixed inset-0 bg-black/95 z-[200] hidden flex-col items-center justify-center" onclick="closeLightbox(event)">
+          <button onclick="closeLightbox(event)" class="absolute top-4 right-4 text-white text-3xl z-10 hover:text-[#FF3333]">&times;</button>
+          <button onclick="prevImage(event)" class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-[#FF3333] bg-black/50 w-12 h-12 rounded-full flex items-center justify-center">&#8249;</button>
+          <button onclick="nextImage(event)" class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl z-10 hover:text-[#FF3333] bg-black/50 w-12 h-12 rounded-full flex items-center justify-center">&#8250;</button>
+          <img id="lightbox-img" src="" class="max-w-[90vw] max-h-[85vh] object-contain rounded-lg">
+          <p id="lightbox-counter" class="text-gray-400 text-sm mt-4"></p>
+        </div>
+      `;
+
+      // Store allImages globally for lightbox
+      window._allImages = allImages;
+      window._currentImageIndex = 0;
+
       return `
         <!-- Nút quay lại -->
         <a href="index.html" class="inline-flex items-center gap-2 text-gray-400 hover:text-[#FFD700] transition-colors mb-6">
@@ -223,14 +260,20 @@
 
           <!-- CỘT TRÁI: Ảnh (sticky trên desktop) -->
           <div class="sticky-image">
-            <div class="rounded-2xl overflow-hidden border border-gray-800 bg-[#1a1a1a]">
+            <!-- Ảnh bìa lớn -->
+            <div class="rounded-2xl overflow-hidden border border-gray-800 bg-[#1a1a1a] cursor-pointer" onclick="openLightbox(0)">
               <img
+                id="main-gallery-img"
                 src="${imgSrc}"
                 alt="${escapeHtml(acc.title)}"
                 class="w-full h-auto object-cover"
                 onerror="this.onerror=null; this.src='https://placehold.co/800x600/1a1a1a/666?text=No+Image'"
               />
             </div>
+
+            <!-- Album ảnh thumbnails -->
+            ${galleryHTML}
+
             <!-- Mã acc -->
             <p class="text-gray-600 text-xs mt-3 text-center">Mã acc: #${acc.id}</p>
           </div>
@@ -319,8 +362,77 @@
 
           </div>
         </div>
+        ${lightboxHTML}
       `;
     }
+
+
+    // ========================================================
+    // Lightbox functions
+    // ========================================================
+    function openLightbox(index) {
+      window._currentImageIndex = index;
+      const lb = document.getElementById("lightbox");
+      lb.classList.remove("hidden");
+      lb.classList.add("flex");
+      updateLightboxImage();
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox(e) {
+      if (e) e.stopPropagation();
+      const lb = document.getElementById("lightbox");
+      lb.classList.add("hidden");
+      lb.classList.remove("flex");
+      document.body.style.overflow = "";
+    }
+
+    function updateLightboxImage() {
+      const img = document.getElementById("lightbox-img");
+      const counter = document.getElementById("lightbox-counter");
+      const images = window._allImages;
+      const i = window._currentImageIndex;
+      img.src = images[i];
+      counter.textContent = `${i + 1} / ${images.length}`;
+    }
+
+    function prevImage(e) {
+      if (e) e.stopPropagation();
+      const images = window._allImages;
+      window._currentImageIndex = (window._currentImageIndex - 1 + images.length) % images.length;
+      updateLightboxImage();
+    }
+
+    function nextImage(e) {
+      if (e) e.stopPropagation();
+      const images = window._allImages;
+      window._currentImageIndex = (window._currentImageIndex + 1) % images.length;
+      updateLightboxImage();
+    }
+
+    // Phím tắt: ← → Esc
+    document.addEventListener("keydown", function(e) {
+      const lb = document.getElementById("lightbox");
+      if (!lb || lb.classList.contains("hidden")) return;
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft") prevImage();
+      if (e.key === "ArrowRight") nextImage();
+    });
+
+    // Vuốt trên mobile
+    let touchStartX = 0;
+    document.addEventListener("touchstart", function(e) {
+      touchStartX = e.touches[0].clientX;
+    });
+    document.addEventListener("touchend", function(e) {
+      const lb = document.getElementById("lightbox");
+      if (!lb || lb.classList.contains("hidden")) return;
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) nextImage();
+        else prevImage();
+      }
+    });
 
 
     // ========================================================

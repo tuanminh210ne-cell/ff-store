@@ -176,6 +176,25 @@ def list_accounts(request: Request, db: Session = Depends(get_db)):
 
 
 # ============================================================
+# GET /api/admin/accounts
+# Trả về TẤT CẢ acc (cả đã bán) — dùng cho trang admin
+# ============================================================
+@app.get(
+    "/api/admin/accounts",
+    response_model=list[AccountDetail],
+    summary="Tất cả acc (admin only)",
+)
+@limiter.limit("100/minute")
+def admin_list_accounts(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    accounts = db.query(Account).order_by(Account.id.desc()).all()
+    return accounts
+
+
+# ============================================================
 # GET /api/accounts/{id}
 # Trả về chi tiết đầy đủ 1 acc theo ID
 # ============================================================
@@ -257,6 +276,7 @@ def add_account(
         login_method=body.login_method,
         status="Đang bán",
         image_url=body.image_url,
+        gallery_images=body.gallery_images,
         description=body.description,
     )
 
