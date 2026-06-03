@@ -5,6 +5,7 @@
 import os
 import json
 import base64
+import re
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -35,7 +36,14 @@ def upload_image_to_drive(base64_data: str, filename: str) -> str:
     Upload ảnh base64 lên Google Drive
     Trả về URL công khai của ảnh
     """
-    # Tách header base64 nếu có (data:image/jpeg;base64,...)
+    # Detect mimetype từ base64 header
+    mimetype = "image/jpeg"
+    if base64_data.startswith("data:"):
+        match = re.match(r"data:([^;]+);", base64_data)
+        if match:
+            mimetype = match.group(1)
+
+    # Tách header base64 nếu có
     if "," in base64_data:
         base64_data = base64_data.split(",")[1]
 
@@ -54,24 +62,25 @@ def upload_image_to_drive(base64_data: str, filename: str) -> str:
     # Upload file
     media = MediaIoBaseUpload(
         io.BytesIO(image_bytes),
-        mimetype="image/jpeg",
+        mimetype=mimetype,
         resumable=True,
     )
 
     file = service.files().create(
         body=file_metadata,
         media_body=media,
-        fields="id, webContentLink",
+        fields="id",
     ).execute()
+
+    file_id = file["id"]
 
     # Set quyền public (ai cũng xem được)
     service.permissions().create(
-        fileId=file["id"],
+        fileId=file_id,
         body={"role": "reader", "type": "anyone"},
     ).execute()
 
-    # Lấy URL công khai
-    file_id = file["id"]
-    public_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+    # URL công khai — dùng uc?id= để load ảnh trực tiếp
+    public_url = f"https://drive.google.com/uc?export=view&id={file_id}"
 
     return public_url

@@ -594,7 +594,7 @@
         }
 
         try {
-          const base64 = await resizeImage(file);
+          const base64 = await readFileAsBase64(file);
           const url = await uploadToGoogleDrive(base64, file.name);
           galleryImages.push(url);
           updateGalleryPreview();
@@ -608,26 +608,11 @@
       input.value = "";
     }
 
-    function resizeImage(file) {
+    function readFileAsBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function(e) {
-          const img = new Image();
-          img.onload = function() {
-            const canvas = document.createElement("canvas");
-            const maxSize = 800;
-            let w = img.width, h = img.height;
-            if (w > maxSize || h > maxSize) {
-              if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-              else { w = Math.round(w * maxSize / h); h = maxSize; }
-            }
-            canvas.width = w;
-            canvas.height = h;
-            canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL("image/jpeg", 0.7));
-          };
-          img.onerror = reject;
-          img.src = e.target.result;
+          resolve(e.target.result); // Giữ nguyên base64 gốc, không resize
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
@@ -645,12 +630,16 @@
         body: JSON.stringify({ image: base64Data, filename }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Upload thất bại");
+        throw new Error(data.detail || JSON.stringify(data));
       }
 
-      const data = await res.json();
+      if (!data.url) {
+        throw new Error("Không nhận được URL từ server");
+      }
+
       return data.url;
     }
 
@@ -689,7 +678,7 @@
       showToast("Đang upload ảnh bìa...", "success");
 
       try {
-        const base64 = await resizeImage(file);
+        const base64 = await readFileAsBase64(file);
         const url = await uploadToGoogleDrive(base64, file.name);
 
         // Gán URL vào input

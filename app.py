@@ -488,12 +488,18 @@ async def upload_image(
         if not image_data:
             raise HTTPException(status_code=400, detail="Thiếu dữ liệu ảnh")
 
+        # Log kích thước ảnh
+        data_size = len(image_data)
+        print(f"[UPLOAD] File: {filename}, Size: {data_size} bytes")
+
         # Upload lên Google Drive
         url = upload_image_to_drive(image_data, filename)
 
+        print(f"[UPLOAD] Success: {url}")
         return {"success": True, "url": url}
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[UPLOAD] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi upload: {str(e)}")
 
