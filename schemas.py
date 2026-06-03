@@ -69,10 +69,14 @@ class AccountCreate(BaseModel):
     @validator("image_url")
     def image_url_valid(cls, v):
         if v is not None and v.strip():
+            v = v.strip()
+            # Cho phép URL http/https hoặc base64 data URL
+            if v.startswith("data:image/"):
+                return v
             pattern = r"^https?://[^\s]+$"
-            if not re.match(pattern, v.strip()):
-                raise ValueError("image_url phải là URL hợp lệ (http/https)")
-            return v.strip()
+            if not re.match(pattern, v):
+                raise ValueError("image_url phải là URL hợp lệ hoặc ảnh base64")
+            return v
         return v
 
 

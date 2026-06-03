@@ -575,9 +575,18 @@
         if (res.ok) {
           showToast(`Đã thêm acc thành công! (ID: ${data.id})`, "success");
           document.getElementById("add-form").reset();
+          document.getElementById("image-preview").classList.add("hidden");
           loadAdminAccounts();
         } else {
-          const msg = data.detail?.error || data.detail || "Thêm acc thất bại";
+          // Xử lý nhiều loại lỗi khác nhau
+          let msg = "Thêm acc thất bại";
+          if (typeof data.detail === "string") {
+            msg = data.detail;
+          } else if (data.detail?.error) {
+            msg = data.detail.error;
+          } else if (Array.isArray(data.detail)) {
+            msg = data.detail.map(e => e.msg || e).join(", ");
+          }
           showToast(msg, "error");
         }
       } catch (err) {
