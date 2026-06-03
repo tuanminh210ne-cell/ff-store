@@ -6,3 +6,4 @@ python-jose[cryptography]
 slowapi
 werkzeug
 aiofiles
+psycopg2-binary
