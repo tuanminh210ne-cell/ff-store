@@ -118,6 +118,20 @@ def startup():
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
+    # Tạo slug cho acc cũ chưa có
+    db = SessionLocal()
+    try:
+        accounts_without_slug = db.query(Account).filter(Account.slug == None).all()
+        for acc in accounts_without_slug:
+            slug = generate_slug()
+            while db.query(Account).filter(Account.slug == slug).first():
+                slug = generate_slug()
+            acc.slug = slug
+        if accounts_without_slug:
+            db.commit()
+    finally:
+        db.close()
+
     db = SessionLocal()
     try:
         # Tạo admin mặc định từ biến môi trường (nếu chưa có)
