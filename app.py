@@ -489,17 +489,14 @@ async def upload_image(
             raise HTTPException(status_code=400, detail="Thiếu file ảnh")
 
         filename = file.filename or "image.jpg"
+        content_type = file.content_type or "image/jpeg"
         content = await file.read()
 
         # Log kích thước ảnh
-        print(f"[UPLOAD] File: {filename}, Size: {len(content)} bytes")
+        print(f"[UPLOAD] File: {filename}, Size: {len(content)} bytes, Type: {content_type}")
 
-        # Chuyển bytes thành base64
-        base64_data = base64.b64encode(content).decode("utf-8")
-        data_uri = f"data:{file.content_type or 'image/jpeg'};base64,{base64_data}"
-
-        # Upload lên Google Drive
-        url = upload_image_to_drive(data_uri, filename)
+        # Upload bytes trực tiếp lên Google Drive
+        url = upload_image_to_drive(content, filename, content_type)
 
         print(f"[UPLOAD] Success: {url}")
         return {"success": True, "url": url}

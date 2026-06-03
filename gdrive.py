@@ -4,12 +4,10 @@
 
 import os
 import json
-import base64
-import re
+import io
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-import io
 
 # --- Folder ID trên Google Drive ---
 GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "1-tFo_uphd3lWL77_q3lVq5lEV9Wx2SVl")
@@ -31,37 +29,27 @@ def get_drive_service():
     return build("drive", "v3", credentials=creds)
 
 
-def upload_image_to_drive(base64_data: str, filename: str) -> str:
+def upload_image_to_drive(file_bytes: bytes, filename: str, mimetype: str = "image/jpeg") -> str:
     """
-    Upload ảnh base64 lên Google Drive
+    Upload ảnh bytes lên Google Drive
     Trả về URL công khai của ảnh
     """
-    # Detect mimetype từ base64 header
-    mimetype = "image/jpeg"
-    if base64_data.startswith("data:"):
-        match = re.match(r"data:([^;]+);", base64_data)
-        if match:
-            mimetype = match.group(1)
-
-    # Tách header base64 nếu có
-    if "," in base64_data:
-        base64_data = base64_data.split(",")[1]
-
-    # Decode base64 thành bytes
-    image_bytes = base64.b64decode(base64_data)
-
     # Tạo Drive service
     service = get_drive_service()
 
-    # Metadata cho file
+    # Metadata cho file — chỉ dùng tên_ascii để tránh lỗi JSON
+    safe_name = "".join(c for c in filename if c.isalnum() or c in ".-_ ").strip()
+    if not safe_name:
+        safe_name = "image.jpg"
+
     file_metadata = {
-        "name": filename,
+        "name": safe_name,
         "parents": [GDRIVE_FOLDER_ID],
     }
 
-    # Upload file
+    # Upload file dạng binary
     media = MediaIoBaseUpload(
-        io.BytesIO(image_bytes),
+        io.BytesIO(file_bytes),
         mimetype=mimetype,
         resumable=True,
     )
@@ -74,13 +62,13 @@ def upload_image_to_drive(base64_data: str, filename: str) -> str:
 
     file_id = file["id"]
 
-    # Set quyền public (ai cũng xem được)
+    # Set quyền public
     service.permissions().create(
         fileId=file_id,
         body={"role": "reader", "type": "anyone"},
     ).execute()
 
-    # URL công khai — dùng uc?id= để load ảnh trực tiếp
+    # URL công khai
     public_url = f"https://drive.google.com/uc?export=view&id={file_id}"
 
     return public_url
