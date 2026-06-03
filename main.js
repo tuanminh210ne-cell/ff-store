@@ -118,7 +118,7 @@ function renderCard(acc) {
         </p>
 
         <!-- Nút xem chi tiết -->
-        <a href="/${acc.slug || 'detail.html?id=' + acc.id}"
+        <a href="/acc/${acc.slug || acc.id}"
            class="block text-center bg-[#FF3333] hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg btn-glow transition-all text-sm">
           Xem chi tiết
         </a>

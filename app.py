@@ -202,14 +202,12 @@ async def redirect_index():
     return RedirectResponse(url="/home")
 
 
-# Detail page theo slug (URL ngắn)
-@app.get("/{slug}", include_in_schema=False)
+# Detail page theo slug: /acc/{slug}
+@app.get("/acc/{slug}", include_in_schema=False)
 async def serve_detail_by_slug(slug: str, db: Session = Depends(get_db)):
-    # Kiểm tra slug có phải là acc không
     account = db.query(Account).filter(Account.slug == slug).first()
     if account:
         return FileResponse(os.path.join(STATIC_DIR, "detail.html"))
-    # Nếu không phải slug acc → 404
     raise HTTPException(status_code=404, detail="Not found")
 
 

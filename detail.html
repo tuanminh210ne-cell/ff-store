@@ -124,12 +124,13 @@
     // Khởi tạo khi trang load
     // ========================================================
     document.addEventListener("DOMContentLoaded", () => {
-      // Lấy slug từ URL path (VD: /abc123xyz)
+      // Lấy slug từ URL path (VD: /acc/abc123xyz)
       const path = window.location.pathname;
-      const slug = path.substring(1); // Bỏ dấu /
+      const parts = path.split("/");
+      const slug = parts[parts.length - 1]; // Lấy phần cuối
 
       // Nếu không có slug → redirect về trang chủ
-      if (!slug || slug === "detail.html") {
+      if (!slug || slug === "acc") {
         window.location.href = "/home";
         return;
       }
