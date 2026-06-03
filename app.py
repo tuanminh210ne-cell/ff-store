@@ -75,9 +75,9 @@ def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 def startup():
     Base.metadata.create_all(bind=engine)
 
-    # Tạo admin mặc định từ biến môi trường (nếu chưa có)
     db = SessionLocal()
     try:
+        # Tạo admin mặc định từ biến môi trường (nếu chưa có)
         if db.query(Admin).count() == 0:
             admin_user = os.getenv("ADMIN_USERNAME", "admin")
             admin_pass = os.getenv("ADMIN_PASSWORD", "Admin@2024")
@@ -85,6 +85,32 @@ def startup():
                 username=admin_user,
                 hashed_password=generate_password_hash(admin_pass),
             ))
+            db.commit()
+
+        # Seed 2 acc mẫu (nếu chưa có)
+        if db.query(Account).count() == 0:
+            db.add_all([
+                Account(
+                    title="ACC FREE FIRE CỰC VIP - ĐẲNG CẤP THÁNH",
+                    price=500000,
+                    rank_level="Kim Cương",
+                    vip_items="Nhẫn Kim Cương VĨNH VIỄN, Emote Hiếm 100+, Skin Súng Max, Pet Max Level",
+                    login_method="Facebook",
+                    status="Đang bán",
+                    image_url="https://placehold.co/600x400/ff4500/ffffff?text=FF+VIP+1",
+                    description="Acc full nhẫn rank Kim Cương, sở hữu bộ sưu tập skin súng cực hiếm: AK Rồng Xanh, M1887 Vương Miện, Scar Titan. Đã mở khóa tất cả nhân vật. Pet Max Level skill hỗ trợ chiến đấu.",
+                ),
+                Account(
+                    title="ACC FREE FIRE THÁNH CHIẾN - FULL NHẪN",
+                    price=350000,
+                    rank_level="Bạch Kim",
+                    vip_items="Nhẫn Bạch Kim VĨNH VIỄN, 50+ Skin Súng, 30+ Nhân Vật, Elite Pass Mới Nhất",
+                    login_method="Google",
+                    status="Đang bán",
+                    image_url="https://placehold.co/600x400/1e90ff/ffffff?text=FF+VIP+2",
+                    description="Acc đạt rank Bạch Kim nhiều mùa liên tiếp. Đã mở khóa 30+ nhân vật bao gồm Chrono, Alok, Wukong. Sở hữu Elite Pass mùa mới nhất và nhiều skin súng hot.",
+                ),
+            ])
             db.commit()
     finally:
         db.close()
