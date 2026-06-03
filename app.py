@@ -200,7 +200,7 @@ async def serve_home():
 
 @app.get("/danh-sach-acc", include_in_schema=False)
 async def serve_accounts():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    return FileResponse(os.path.join(STATIC_DIR, "danh-sach-acc.html"))
 
 
 @app.get("/admin", include_in_schema=False)

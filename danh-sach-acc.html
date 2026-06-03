@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh sách acc - FF Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .font-game { font-family: 'Orbitron', sans-serif; }
+    .font-body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0f0f0f; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card-hover:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(255, 51, 51, 0.2); }
+    .btn-glow:hover { box-shadow: 0 0 15px rgba(255, 51, 51, 0.5); }
+    .filter-chip { transition: all 0.2s ease; }
+    .filter-chip.active { background: #FF3333; color: white; border-color: #FF3333; }
+    .skeleton { background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .page-btn { transition: all 0.2s ease; }
+    .page-btn.active { background: #FF3333; color: white; }
+  </style>
+</head>
+<body class="bg-[#0f0f0f] text-white font-body min-h-screen flex flex-col">
+
+  <!-- HEADER -->
+  <header class="bg-[#0f0f0f] border-b border-gray-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/home" class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+          <span class="font-game text-white text-lg font-bold">FF</span>
+        </div>
+        <div>
+          <h1 class="font-game text-xl text-[#FFD700] leading-tight">FF STORE</h1>
+          <p class="text-xs text-gray-400">Acc Free Fire Uy Tín</p>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="/home" class="text-gray-400 hover:text-white transition-colors">Trang Chủ</a>
+        <a href="/danh-sach-acc" class="text-[#FFD700] font-semibold border-b-2 border-[#FFD700] pb-1">Danh Sách</a>
+        <a href="/admin" class="text-gray-400 hover:text-white transition-colors">Admin</a>
+      </nav>
+      <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden text-gray-400 hover:text-white">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-800 bg-[#0f0f0f]">
+      <a href="/home" class="block px-4 py-3 text-gray-400 hover:text-white">Trang Chủ</a>
+      <a href="/danh-sach-acc" class="block px-4 py-3 text-[#FFD700] font-semibold">Danh Sách</a>
+      <a href="/admin" class="block px-4 py-3 text-gray-400 hover:text-white">Admin</a>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+
+    <!-- Tiêu đề + bộ lọc -->
+    <div class="mb-8">
+      <h2 class="font-game text-2xl md:text-3xl text-[#FFD700] mb-2">DANH SÁCH ACC</h2>
+      <p id="result-count" class="text-gray-500 text-sm mb-6">Đang tải...</p>
+
+      <!-- Bộ lọc giá -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="setFilter('all')" data-filter="all" class="filter-chip active bg-[#1a1a1a] border border-gray-700 text-gray-300 px-4 py-2 rounded-full text-sm font-medium hover:border-[#FFD700]">
+          Tất cả
+        </button>
+        <button onclick="setFilter('0-1000000')" data-filter="0-1000000" class="filter-chip bg-[#1a1a1a] border border-gray-700 text-gray-300 px-4 py-2 rounded-full text-sm font-medium hover:border-[#FFD700]">
+          Dưới 1 triệu
+        </button>
+        <button onclick="setFilter('1000000-2000000')" data-filter="1000000-2000000" class="filter-chip bg-[#1a1a1a] border border-gray-700 text-gray-300 px-4 py-2 rounded-full text-sm font-medium hover:border-[#FFD700]">
+          1 - 2 triệu
+        </button>
+        <button onclick="setFilter('2000000-3000000')" data-filter="2000000-3000000" class="filter-chip bg-[#1a1a1a] border border-gray-700 text-gray-300 px-4 py-2 rounded-full text-sm font-medium hover:border-[#FFD700]">
+          2 - 3 triệu
+        </button>
+        <button onclick="setFilter('3000000-5000000')" data-filter="3000000-5000000" class="filter-chip bg-[#1a1a1a] border border-gray-700 text-gray-300 px-4 py-2 rounded-full text-sm font-medium hover:border-[#FFD700]">
+          3 - 5 triệu
+        </button>
+        <button onclick="setFilter('5000000-10000000')" data-filter="5000000-10000000" class="filter-chip bg-[#1a1a1a] border border-gray-700 text-gray-300 px-4 py-2 rounded-full text-sm font-medium hover:border-[#FFD700]">
+          5 - 10 triệu
+        </button>
+        <button onclick="setFilter('10000000-999999999')" data-filter="10000000-999999999" class="filter-chip bg-[#1a1a1a] border border-gray-700 text-gray-300 px-4 py-2 rounded-full text-sm font-medium hover:border-[#FFD700]">
+          Trên 10 triệu
+        </button>
+      </div>
+    </div>
+
+    <!-- Grid acc -->
+    <div id="account-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"></div>
+
+    <!-- Phân trang -->
+    <div id="pagination" class="flex flex-wrap justify-center gap-2 mt-8"></div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-[#111] border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-center text-gray-500 text-xs">
+      &copy; 2026 FF Store. Mọi quyền được bảo lưu.
+    </div>
+  </footer>
+
+  <script>
+    const BASE_URL = window.location.origin;
+    const PER_PAGE = 10;
+
+    let allAccounts = [];
+    let filteredAccounts = [];
+    let currentPage = 1;
+    let currentFilter = 'all';
+
+    // ============================================================
+    // Khởi tạo
+    // ============================================================
+    document.addEventListener("DOMContentLoaded", () => {
+      loadAccounts();
+    });
+
+    // ============================================================
+    // Tải danh sách acc
+    // ============================================================
+    async function loadAccounts() {
+      const container = document.getElementById("account-list");
+      showSkeleton(container);
+
+      try {
+        const res = await fetch(`${BASE_URL}/api/accounts`);
+        allAccounts = await res.json();
+        applyFilter();
+      } catch (err) {
+        container.innerHTML = `
+          <div class="col-span-full text-center py-16">
+            <p class="text-red-400 mb-4">Không thể tải dữ liệu</p>
+            <button onclick="loadAccounts()" class="bg-[#FF3333] text-white px-4 py-2 rounded-lg">Thử lại</button>
+          </div>
+        `;
+      }
+    }
+
+    // ============================================================
+    // Áp dụng bộ lọc
+    // ============================================================
+    function applyFilter() {
+      if (currentFilter === 'all') {
+        filteredAccounts = [...allAccounts];
+      } else {
+        const [min, max] = currentFilter.split('-').map(Number);
+        filteredAccounts = allAccounts.filter(acc => acc.price >= min && acc.price < max);
+      }
+
+      currentPage = 1;
+      renderAccounts();
+      renderPagination();
+    }
+
+    // ============================================================
+    // Đặt bộ lọc
+    // ============================================================
+    function setFilter(filter) {
+      currentFilter = filter;
+
+      // Cập nhật UI nút lọc
+      document.querySelectorAll('.filter-chip').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === filter) {
+          btn.classList.add('active');
+        }
+      });
+
+      applyFilter();
+    }
+
+    // ============================================================
+    // Render danh sách acc theo trang
+    // ============================================================
+    function renderAccounts() {
+      const container = document.getElementById("account-list");
+      const countEl = document.getElementById("result-count");
+
+      const total = filteredAccounts.length;
+      const totalPages = Math.ceil(total / PER_PAGE);
+      const start = (currentPage - 1) * PER_PAGE;
+      const end = start + PER_PAGE;
+      const pageAccounts = filteredAccounts.slice(start, end);
+
+      countEl.textContent = `Hiển thị ${start + 1}-${Math.min(end, total)} trong ${total} acc`;
+
+      if (total === 0) {
+        container.innerHTML = `
+          <div class="col-span-full text-center py-16">
+            <p class="text-gray-500 text-lg">Không có acc nào trong khoảng giá này</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = pageAccounts.map(acc => renderCard(acc)).join('');
+    }
+
+    // ============================================================
+    // Render 1 card
+    // ============================================================
+    function renderCard(acc) {
+      const priceFormatted = acc.price.toLocaleString("vi-VN");
+      const rankBadge = getRankBadge(acc.rank_level);
+      const imgOnError = "this.onerror=null; this.src='https://placehold.co/400x300/1a1a1a/666?text=No+Image'";
+
+      return `
+        <div class="bg-[#1a1a1a] rounded-xl overflow-hidden border border-gray-800 card-hover flex flex-col">
+          <div class="relative aspect-[4/3] overflow-hidden">
+            <img src="${acc.image_url || 'https://placehold.co/400x300/1a1a1a/666?text=No+Image'}"
+                 alt="${acc.title}" class="w-full h-full object-cover" onerror="${imgOnError}">
+            ${rankBadge}
+          </div>
+          <div class="p-4 flex flex-col flex-1">
+            <h4 class="text-white font-semibold text-sm leading-snug mb-3 min-h-[2.5rem]"
+                style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+              ${escapeHtml(acc.title)}
+            </h4>
+            <p class="text-[#FF3333] font-game text-lg font-bold mb-4 mt-auto">
+              ${priceFormatted} <span class="text-sm font-body font-normal text-gray-400">VNĐ</span>
+            </p>
+            <a href="/acc/${acc.slug || acc.id}" target="_blank"
+               class="block text-center bg-[#FF3333] hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg btn-glow transition-all text-sm">
+              Xem chi tiết
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // Render phân trang
+    // ============================================================
+    function renderPagination() {
+      const container = document.getElementById("pagination");
+      const totalPages = Math.ceil(filteredAccounts.length / PER_PAGE);
+
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+
+      // Nút Previous
+      if (currentPage > 1) {
+        html += `<button onclick="goToPage(${currentPage - 1})" class="page-btn bg-[#1a1a1a] border border-gray-700 text-gray-300 w-10 h-10 rounded-lg text-sm hover:border-[#FFD700]">‹</button>`;
+      }
+
+      // Các nút trang
+      for (let i = 1; i <= totalPages; i++) {
+        if (totalPages > 7) {
+          // Hiển thị: 1 ... 4 5 6 ... 10
+          if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+            html += `<button onclick="goToPage(${i})" class="page-btn ${i === currentPage ? 'active' : ''} bg-[#1a1a1a] border border-gray-700 text-gray-300 w-10 h-10 rounded-lg text-sm hover:border-[#FFD700]">${i}</button>`;
+          } else if (i === currentPage - 2 || i === currentPage + 2) {
+            html += `<span class="text-gray-500 w-10 h-10 flex items-center justify-center">...</span>`;
+          }
+        } else {
+          html += `<button onclick="goToPage(${i})" class="page-btn ${i === currentPage ? 'active' : ''} bg-[#1a1a1a] border border-gray-700 text-gray-300 w-10 h-10 rounded-lg text-sm hover:border-[#FFD700]">${i}</button>`;
+        }
+      }
+
+      // Nút Next
+      if (currentPage < totalPages) {
+        html += `<button onclick="goToPage(${currentPage + 1})" class="page-btn bg-[#1a1a1a] border border-gray-700 text-gray-300 w-10 h-10 rounded-lg text-sm hover:border-[#FFD700]">›</button>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ============================================================
+    // Chuyển trang
+    // ============================================================
+    function goToPage(page) {
+      currentPage = page;
+      renderAccounts();
+      renderPagination();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============================================================
+    // Badge rank
+    // ============================================================
+    function getRankBadge(rankLevel) {
+      if (!rankLevel) return "";
+      const level = parseInt(rankLevel);
+      let bg, text, label;
+      if (!isNaN(level)) {
+        if (level >= 70) { bg = "bg-cyan-500/20 border-cyan-400"; text = "text-cyan-300"; }
+        else if (level >= 50) { bg = "bg-purple-500/20 border-purple-400"; text = "text-purple-300"; }
+        else if (level >= 30) { bg = "bg-yellow-500/20 border-yellow-400"; text = "text-yellow-300"; }
+        else { bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300"; }
+        label = `Lv ${level}`;
+      } else {
+        bg = "bg-gray-500/20 border-gray-400"; text = "text-gray-300"; label = rankLevel;
+      }
+      return `<span class="absolute top-3 left-3 ${bg} ${text} border text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">${escapeHtml(label)}</span>`;
+    }
+
+    // ============================================================
+    // Skeleton loading
+    // ============================================================
+    function showSkeleton(container) {
+      let html = '';
+      for (let i = 0; i < 8; i++) {
+        html += `
+          <div class="bg-[#1a1a1a] rounded-xl overflow-hidden border border-gray-800">
+            <div class="aspect-[4/3] skeleton"></div>
+            <div class="p-4 space-y-3">
+              <div class="h-4 skeleton rounded w-3/4"></div>
+              <div class="h-4 skeleton rounded w-1/2"></div>
+              <div class="h-6 skeleton rounded w-1/3 mt-4"></div>
+              <div class="h-10 skeleton rounded-lg w-full mt-4"></div>
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    // ============================================================
+    // Escape HTML
+    // ============================================================
+    function escapeHtml(text) {
+      if (!text) return "";
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
