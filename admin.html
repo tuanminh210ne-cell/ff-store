@@ -748,9 +748,9 @@
           successCount++;
           showToast(`Upload ${successCount}/${files.length} thành công!`, "success");
 
-          // Đợi 1.5s giữa mỗi upload để tránh rate limit
+          // Đợi 0.5s giữa mỗi upload (có 4 key nên rate limit ít hơn)
           if (i < files.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         } catch (err) {
           failCount++;
@@ -780,13 +780,25 @@
       });
     }
 
-    // ImgBB API Key
-    const IMGBB_API_KEY = "e1bb3af692ac502b19f75b834ba75d1c";
+    // ImgBB API Keys (xoay vòng để tránh rate limit)
+    const IMGBB_KEYS = [
+      "e1bb3af692ac502b19f75b834ba75d1c",
+      "c54f02ee8b560e23cadfb3cf8a25f59f",
+      "6efbdaa21e1b6ebb473832898cb6f672",
+      "b4fabce5c21871df7fde3ae1b722b07a",
+    ];
+    let keyIndex = 0;
+
+    function getNextKey() {
+      const key = IMGBB_KEYS[keyIndex];
+      keyIndex = (keyIndex + 1) % IMGBB_KEYS.length;
+      return key;
+    }
 
     async function uploadToImgBB(base64Data, filename) {
       // Upload trực tiếp từ browser lên ImgBB (nhanh ~1-2s)
       const formData = new FormData();
-      formData.append("key", IMGBB_API_KEY);
+      formData.append("key", getNextKey());
       formData.append("image", base64Data.split(",")[1] || base64Data);
       formData.append("name", filename.replace(/\.[^.]+$/, ""));
 
