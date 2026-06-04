@@ -145,21 +145,9 @@
           </select>
         </div>
 
-        <!-- Phương thức upload -->
+        <!-- Ảnh bìa: upload hoặc dán link -->
         <div>
-          <label class="block text-gray-400 text-sm mb-2">Phương thức upload ảnh</label>
-          <select id="upload-method"
-            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none">
-            <option value="imgbb">ImgBB (Nhanh)</option>
-            <option value="base64">Lưu trực tiếp (Base64)</option>
-            <option value="cloudinary">Cloudinary (Miễn phí)</option>
-            <option value="gdrive">Google Drive</option>
-          </select>
-        </div>
-
-        <!-- Ảnh: upload hoặc dán link -->
-        <div>
-          <label class="block text-gray-400 text-sm mb-2">Ảnh acc</label>
+          <label class="block text-gray-400 text-sm mb-2">Ảnh bìa</label>
           <div class="flex gap-2">
             <input type="file" id="add-image-file" accept="image/*" onchange="handleImageUpload(this)"
               class="hidden">
@@ -171,6 +159,14 @@
               class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none"
               placeholder="Hoặc dán link ảnh...">
           </div>
+          <!-- Chọn phương thức upload ảnh bìa -->
+          <select id="upload-method-cover"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-3 py-2 text-gray-400 text-sm focus:border-[#FFD700] focus:outline-none mt-2">
+            <option value="imgbb">📤 ImgBB (Nhanh)</option>
+            <option value="base64">💾 Lưu trực tiếp (Base64)</option>
+            <option value="cloudinary">☁️ Cloudinary</option>
+            <option value="gdrive">📁 Google Drive</option>
+          </select>
           <div id="image-preview" class="hidden mt-2">
             <img id="preview-img" src="" class="w-20 h-20 object-cover rounded-lg border border-gray-700">
           </div>
@@ -187,6 +183,14 @@
             </button>
             <div id="gallery-info" class="text-gray-500 text-sm py-3">Chưa có ảnh nào</div>
           </div>
+          <!-- Chọn phương thức upload album -->
+          <select id="upload-method-gallery"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-3 py-2 text-gray-400 text-sm focus:border-[#FFD700] focus:outline-none mt-2">
+            <option value="imgbb">📤 ImgBB (Nhanh)</option>
+            <option value="base64">💾 Lưu trực tiếp (Base64)</option>
+            <option value="cloudinary">☁️ Cloudinary</option>
+            <option value="gdrive">📁 Google Drive</option>
+          </select>
           <div id="gallery-preview" class="flex flex-wrap gap-2 mt-2"></div>
         </div>
 
@@ -747,9 +751,14 @@
     // Google Drive Apps Script URL
     const GDRIVE_URL = "https://script.google.com/macros/s/AKfycbwgOzSIHZa37ZJIBD5EhLB4inns4gY4XM6pgeyfSag0SNwQfTKXBOA7x6g9WI5PXuA3/exec";
 
-    // Lấy phương thức upload hiện tại
-    function getUploadMethod() {
-      return document.getElementById("upload-method")?.value || "imgbb";
+    // Lấy phương thức upload cho ảnh bìa
+    function getCoverUploadMethod() {
+      return document.getElementById("upload-method-cover")?.value || "imgbb";
+    }
+
+    // Lấy phương thức upload cho album
+    function getGalleryUploadMethod() {
+      return document.getElementById("upload-method-gallery")?.value || "imgbb";
     }
 
     // Đọc file thành base64
@@ -846,8 +855,8 @@
     // ========================================================
     // Upload chính - tự động chọn phương thức
     // ========================================================
-    async function uploadImage(base64Data, filename) {
-      const method = getUploadMethod();
+    async function uploadImage(base64Data, filename, method = null) {
+      if (!method) method = "imgbb";
 
       switch (method) {
         case "imgbb":
@@ -876,12 +885,12 @@
         return;
       }
 
-      const method = getUploadMethod();
+      const method = getCoverUploadMethod();
       showToast(`Đang upload ảnh bìa qua ${method}...`, "success");
 
       try {
         const base64 = await readFileAsBase64(file);
-        const url = await uploadImage(base64, file.name);
+        const url = await uploadImage(base64, file.name, method);
 
         document.getElementById("add-image").value = url;
         document.getElementById("preview-img").src = url;
@@ -905,7 +914,7 @@
         return;
       }
 
-      const method = getUploadMethod();
+      const method = getGalleryUploadMethod();
       isUploading = true;
       showToast(`Đang upload ${files.length} ảnh qua ${method}...`, "success");
 
@@ -922,13 +931,13 @@
 
         try {
           const base64 = await readFileAsBase64(file);
-          const url = await uploadImage(base64, file.name);
+          const url = await uploadImage(base64, file.name, method);
           galleryImages.push(url);
           updateGalleryPreview();
           successCount++;
           showToast(`Upload ${successCount}/${files.length} thành công!`, "success");
 
-          // Đợi 0.5s giữa mỗi upload (tránh rate limit)
+          // Đợi 0.5s giữa mỗi upload cho ImgBB (tránh rate limit)
           if (i < files.length - 1 && method === "imgbb") {
             await new Promise(resolve => setTimeout(resolve, 500));
           }
