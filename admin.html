@@ -727,11 +727,16 @@
       }
 
       isUploading = true;
-      showToast(`Đang upload ${files.length} ảnh lên Google Drive...`, "success");
+      showToast(`Đang upload ${files.length} ảnh...`, "success");
 
-      for (const file of files) {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         if (file.size > 5 * 1024 * 1024) {
           showToast(`Ảnh ${file.name} quá lớn (tối đa 5MB)`, "error");
+          failCount++;
           continue;
         }
 
@@ -740,13 +745,27 @@
           const url = await uploadToImgBB(base64, file.name);
           galleryImages.push(url);
           updateGalleryPreview();
+          successCount++;
+          showToast(`Upload ${successCount}/${files.length} thành công!`, "success");
+
+          // Đợi 1.5s giữa mỗi upload để tránh rate limit
+          if (i < files.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          }
         } catch (err) {
+          failCount++;
+          if (err.message.includes("Rate limit")) {
+            showToast("ImgBB rate limit! Đợi 1 phút rồi thử lại.", "error");
+            break;
+          }
           showToast(`Lỗi upload ${file.name}: ${err.message}`, "error");
         }
       }
 
       isUploading = false;
-      showToast(`Đã upload xong ${files.length} ảnh!`, "success");
+      if (successCount > 0) {
+        showToast(`Đã upload ${successCount} ảnh thành công!${failCount > 0 ? ` (${failCount} lỗi)` : ''}`, "success");
+      }
       input.value = "";
     }
 
