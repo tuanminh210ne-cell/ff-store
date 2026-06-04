@@ -145,6 +145,18 @@
           </select>
         </div>
 
+        <!-- Phương thức upload -->
+        <div>
+          <label class="block text-gray-400 text-sm mb-2">Phương thức upload ảnh</label>
+          <select id="upload-method"
+            class="w-full bg-[#0f0f0f] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#FFD700] focus:outline-none">
+            <option value="imgbb">ImgBB (Nhanh)</option>
+            <option value="base64">Lưu trực tiếp (Base64)</option>
+            <option value="cloudinary">Cloudinary (Miễn phí)</option>
+            <option value="gdrive">Google Drive</option>
+          </select>
+        </div>
+
         <!-- Ảnh: upload hoặc dán link -->
         <div>
           <label class="block text-gray-400 text-sm mb-2">Ảnh acc</label>
@@ -714,11 +726,178 @@
 
 
     // ========================================================
-    // Gallery images storage (URLs from Google Drive)
+    // Hệ thống upload ảnh - Hỗ trợ 4 phương thức
     // ========================================================
     let galleryImages = [];
     let isUploading = false;
 
+    // ImgBB API Keys (xoay vòng)
+    const IMGBB_KEYS = [
+      "e1bb3af692ac502b19f75b834ba75d1c",
+      "c54f02ee8b560e23cadfb3cf8a25f59f",
+      "6efbdaa21e1b6ebb473832898cb6f672",
+      "b4fabce5c21871df7fde3ae1b722b07a",
+    ];
+    let imgbbKeyIndex = 0;
+
+    // Cloudinary config (thay bằng thông tin của bạn)
+    const CLOUDINARY_CLOUD = "demo"; // Thay bằng Cloud Name của bạn
+    const CLOUDINARY_PRESET = "ff_store"; // Thay bằng Upload Preset
+
+    // Google Drive Apps Script URL
+    const GDRIVE_URL = "https://script.google.com/macros/s/AKfycbwgOzSIHZa37ZJIBD5EhLB4inns4gY4XM6pgeyfSag0SNwQfTKXBOA7x6g9WI5PXuA3/exec";
+
+    // Lấy phương thức upload hiện tại
+    function getUploadMethod() {
+      return document.getElementById("upload-method")?.value || "imgbb";
+    }
+
+    // Đọc file thành base64
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ========================================================
+    // Upload lên ImgBB
+    // ========================================================
+    async function uploadToImgBB(base64Data, filename) {
+      const key = IMGBB_KEYS[imgbbKeyIndex];
+      imgbbKeyIndex = (imgbbKeyIndex + 1) % IMGBB_KEYS.length;
+
+      const formData = new FormData();
+      formData.append("key", key);
+      formData.append("image", base64Data.split(",")[1] || base64Data);
+      formData.append("name", filename.replace(/\.[^.]+$/, ""));
+
+      const res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.error?.message || "Upload ImgBB thất bại");
+      return data.data.display_url;
+    }
+
+    // ========================================================
+    // Upload lên Cloudinary
+    // ========================================================
+    async function uploadToCloudinary(base64Data, filename) {
+      const formData = new FormData();
+      formData.append("file", base64Data);
+      formData.append("upload_preset", CLOUDINARY_PRESET);
+      formData.append("public_id", filename.replace(/\.[^.]+$/, ""));
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error.message);
+      return data.secure_url;
+    }
+
+    // ========================================================
+    // Upload lên Google Drive (qua Apps Script)
+    // ========================================================
+    async function uploadToGDrive(base64Data, filename) {
+      const res = await fetch(GDRIVE_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          image: base64Data.split(",")[1] || base64Data,
+          filename: filename,
+          mimeType: base64Data.match(/data:([^;]+)/)?.[1] || "image/jpeg",
+        }),
+      });
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.error || "Upload Google Drive thất bại");
+      return data.url;
+    }
+
+    // ========================================================
+    // Upload base64 trực tiếp (lưu vào database)
+    // ========================================================
+    async function uploadAsBase64(base64Data, filename) {
+      // Resize ảnh để giảm kích thước (tối đa 800px)
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement("canvas");
+          const maxSize = 800;
+          let w = img.width, h = img.height;
+          if (w > maxSize || h > maxSize) {
+            if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+            else { w = Math.round(w * maxSize / h); h = maxSize; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.onerror = reject;
+        img.src = base64Data;
+      });
+    }
+
+    // ========================================================
+    // Upload chính - tự động chọn phương thức
+    // ========================================================
+    async function uploadImage(base64Data, filename) {
+      const method = getUploadMethod();
+
+      switch (method) {
+        case "imgbb":
+          return await uploadToImgBB(base64Data, filename);
+        case "cloudinary":
+          return await uploadToCloudinary(base64Data, filename);
+        case "gdrive":
+          return await uploadToGDrive(base64Data, filename);
+        case "base64":
+          return await uploadAsBase64(base64Data, filename);
+        default:
+          return await uploadToImgBB(base64Data, filename);
+      }
+    }
+
+    // ========================================================
+    // Upload ảnh bìa
+    // ========================================================
+    async function handleImageUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("Ảnh quá lớn (tối đa 5MB)", "error");
+        input.value = "";
+        return;
+      }
+
+      const method = getUploadMethod();
+      showToast(`Đang upload ảnh bìa qua ${method}...`, "success");
+
+      try {
+        const base64 = await readFileAsBase64(file);
+        const url = await uploadImage(base64, file.name);
+
+        document.getElementById("add-image").value = url;
+        document.getElementById("preview-img").src = url;
+        document.getElementById("image-preview").classList.remove("hidden");
+
+        showToast("Ảnh bìa đã upload thành công!", "success");
+      } catch (err) {
+        showToast("Lỗi upload: " + err.message, "error");
+      }
+
+      input.value = "";
+    }
+
+    // ========================================================
+    // Upload album ảnh
+    // ========================================================
     async function handleGalleryUpload(input) {
       const files = Array.from(input.files);
       if (galleryImages.length + files.length > 100) {
@@ -726,8 +905,9 @@
         return;
       }
 
+      const method = getUploadMethod();
       isUploading = true;
-      showToast(`Đang upload ${files.length} ảnh...`, "success");
+      showToast(`Đang upload ${files.length} ảnh qua ${method}...`, "success");
 
       let successCount = 0;
       let failCount = 0;
@@ -742,20 +922,20 @@
 
         try {
           const base64 = await readFileAsBase64(file);
-          const url = await uploadToImgBB(base64, file.name);
+          const url = await uploadImage(base64, file.name);
           galleryImages.push(url);
           updateGalleryPreview();
           successCount++;
           showToast(`Upload ${successCount}/${files.length} thành công!`, "success");
 
-          // Đợi 0.5s giữa mỗi upload (có 4 key nên rate limit ít hơn)
-          if (i < files.length - 1) {
+          // Đợi 0.5s giữa mỗi upload (tránh rate limit)
+          if (i < files.length - 1 && method === "imgbb") {
             await new Promise(resolve => setTimeout(resolve, 500));
           }
         } catch (err) {
           failCount++;
           if (err.message.includes("Rate limit")) {
-            showToast("ImgBB rate limit! Đợi 1 phút rồi thử lại.", "error");
+            showToast("Rate limit! Đợi 1 phút rồi thử lại.", "error");
             break;
           }
           showToast(`Lỗi upload ${file.name}: ${err.message}`, "error");
@@ -769,54 +949,9 @@
       input.value = "";
     }
 
-    function readFileAsBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          resolve(e.target.result); // Giữ nguyên base64 gốc, không resize
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // ImgBB API Keys (xoay vòng để tránh rate limit)
-    const IMGBB_KEYS = [
-      "e1bb3af692ac502b19f75b834ba75d1c",
-      "c54f02ee8b560e23cadfb3cf8a25f59f",
-      "6efbdaa21e1b6ebb473832898cb6f672",
-      "b4fabce5c21871df7fde3ae1b722b07a",
-    ];
-    let keyIndex = 0;
-
-    function getNextKey() {
-      const key = IMGBB_KEYS[keyIndex];
-      keyIndex = (keyIndex + 1) % IMGBB_KEYS.length;
-      return key;
-    }
-
-    async function uploadToImgBB(base64Data, filename) {
-      // Upload trực tiếp từ browser lên ImgBB (nhanh ~1-2s)
-      const formData = new FormData();
-      formData.append("key", getNextKey());
-      formData.append("image", base64Data.split(",")[1] || base64Data);
-      formData.append("name", filename.replace(/\.[^.]+$/, ""));
-
-      const res = await fetch("https://api.imgbb.com/1/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        throw new Error(data.error?.message || "Upload ImgBB thất bại");
-      }
-
-      // Trả về URL ảnh (dùng display_url cho chất lượng cao)
-      return data.data.display_url;
-    }
-
+    // ========================================================
+    // Gallery preview
+    // ========================================================
     function updateGalleryPreview() {
       const container = document.getElementById("gallery-preview");
       const info = document.getElementById("gallery-info");
@@ -833,41 +968,6 @@
     function removeGalleryImage(index) {
       galleryImages.splice(index, 1);
       updateGalleryPreview();
-    }
-
-
-    // ========================================================
-    // Xử lý upload ảnh bìa → resize + upload Google Drive
-    // ========================================================
-    async function handleImageUpload(input) {
-      const file = input.files[0];
-      if (!file) return;
-
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("Ảnh quá lớn (tối đa 5MB)", "error");
-        input.value = "";
-        return;
-      }
-
-      showToast("Đang upload ảnh bìa...", "success");
-
-      try {
-        const base64 = await readFileAsBase64(file);
-        const url = await uploadToImgBB(base64, file.name);
-
-        // Gán URL vào input
-        document.getElementById("add-image").value = url;
-
-        // Hiện preview
-        document.getElementById("preview-img").src = url;
-        document.getElementById("image-preview").classList.remove("hidden");
-
-        showToast("Ảnh bìa đã upload thành công!", "success");
-      } catch (err) {
-        showToast("Lỗi upload: " + err.message, "error");
-      }
-
-      input.value = "";
     }
 
 
