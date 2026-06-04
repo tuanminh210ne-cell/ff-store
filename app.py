@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 
 # --- Import từ các file đã tách ---
 from database import get_db, engine, Base, SessionLocal
-from models import Account, Admin, RateLimitLog, AuditLog, generate_slug
+from models import Account, Admin, RateLimitLog, AuditLog, VisitorLog, AdminLoginLog, generate_slug
 from schemas import (
     AccountListItem, AccountDetail, MessageResponse, ErrorResponse,
     AccountCreate, LoginRequest, LoginResponse,
@@ -89,6 +89,39 @@ async def add_security_headers(request: Request, call_next):
     # Chỉ cho phép HTTPS sau 1 năm (HSTS)
     if request.url.scheme == "https":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+# ============================================================
+# BƯỚC 3.5: Track visitors (không track admin API calls)
+# ============================================================
+TRACKED_PAGES = ["/home", "/danh-sach-acc", "/admin"]
+ADMIN_PREFIXES = ["/api/admin", "/api/auth"]
+
+@app.middleware("http")
+async def track_visitors(request: Request, call_next):
+    response = await call_next(request)
+
+    # Chỉ track page visits, không track API calls
+    path = request.url.path
+    if path in TRACKED_PAGES:
+        # Không track nếu là admin request
+        is_admin = any(path.startswith(p) for p in ADMIN_PREFIXES)
+        if not is_admin:
+            try:
+                db = SessionLocal()
+                visitor = VisitorLog(
+                    ip_address=request.client.host,
+                    page=path,
+                    user_agent=request.headers.get("user-agent", ""),
+                    referrer=request.headers.get("referer", ""),
+                )
+                db.add(visitor)
+                db.commit()
+                db.close()
+            except Exception:
+                pass  # Không làm gián đoạn request nếu log lỗi
+
     return response
 
 
@@ -356,6 +389,18 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
         ip_address=request.client.host,
     )
 
+    # Ghi log IP admin đăng nhập
+    try:
+        login_log = AdminLoginLog(
+            username=admin.username,
+            ip_address=request.client.host,
+            user_agent=request.headers.get("user-agent", ""),
+        )
+        db.add(login_log)
+        db.commit()
+    except Exception:
+        pass
+
     return LoginResponse(access_token=access_token)
 
 
@@ -533,6 +578,98 @@ def get_audit_log(
         }
         for log in logs
     ]
+
+
+# ============================================================
+# GET /api/admin/analytics
+# Thống kê người truy cập (admin only)
+# ============================================================
+@app.get(
+    "/api/admin/analytics",
+    summary="Thống kê truy cập (admin only)",
+)
+@limiter.limit("100/minute")
+def get_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+
+    now = datetime.now()
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+
+    # Tổng visitors
+    total_visitors = db.query(func.count(VisitorLog.id)).scalar() or 0
+
+    # Visitors hôm nay
+    today_visitors = db.query(func.count(VisitorLog.id)).filter(
+        VisitorLog.timestamp >= today
+    ).scalar() or 0
+
+    # Visitors 7 ngày
+    week_visitors = db.query(func.count(VisitorLog.id)).filter(
+        VisitorLog.timestamp >= week_ago
+    ).scalar() or 0
+
+    # Visitors 30 ngày
+    month_visitors = db.query(func.count(VisitorLog.id)).filter(
+        VisitorLog.timestamp >= month_ago
+    ).scalar() or 0
+
+    # Top pages
+    top_pages = db.query(
+        VisitorLog.page,
+        func.count(VisitorLog.id).label("count")
+    ).group_by(VisitorLog.page).order_by(func.count(VisitorLog.id).desc()).limit(5).all()
+
+    # Top IPs
+    top_ips = db.query(
+        VisitorLog.ip_address,
+        func.count(VisitorLog.id).label("count")
+    ).group_by(VisitorLog.ip_address).order_by(func.count(VisitorLog.id).desc()).limit(10).all()
+
+    # Admin login logs gần đây
+    admin_logins = db.query(AdminLoginLog).order_by(
+        AdminLoginLog.timestamp.desc()
+    ).limit(20).all()
+
+    # Visitors gần đây
+    recent_visitors = db.query(VisitorLog).order_by(
+        VisitorLog.timestamp.desc()
+    ).limit(50).all()
+
+    return {
+        "summary": {
+            "total": total_visitors,
+            "today": today_visitors,
+            "week": week_visitors,
+            "month": month_visitors,
+        },
+        "top_pages": [{"page": p[0], "count": p[1]} for p in top_pages],
+        "top_ips": [{"ip": ip[0], "count": ip[1]} for ip in top_ips],
+        "admin_logins": [
+            {
+                "username": log.username,
+                "ip_address": log.ip_address,
+                "user_agent": log.user_agent,
+                "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+            }
+            for log in admin_logins
+        ],
+        "recent_visitors": [
+            {
+                "ip_address": v.ip_address,
+                "page": v.page,
+                "user_agent": v.user_agent,
+                "timestamp": v.timestamp.isoformat() if v.timestamp else None,
+            }
+            for v in recent_visitors
+        ],
+    }
 
 
 # ============================================================

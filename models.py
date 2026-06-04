@@ -63,6 +63,30 @@ class RateLimitLog(Base):
     timestamp = Column(DateTime, default=datetime.now)  # Thời gian gọi
 
 
+# --- Bảng visitor_log: ghi log người truy cập (không phải admin) ---
+class VisitorLog(Base):
+    __tablename__ = "visitor_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ip_address = Column(Text)           # Địa chỉ IP
+    page = Column(Text)                 # Trang truy cập (/home, /danh-sach-acc, etc.)
+    user_agent = Column(Text)           # Trình duyệt / thiết bị
+    referrer = Column(Text)             # Đến từ đâu
+    country = Column(Text)              # Quốc gia (nếu có)
+    timestamp = Column(DateTime, default=datetime.now)  # Thời gian
+
+
+# --- Bảng admin_login_log: ghi log IP admin đăng nhập ---
+class AdminLoginLog(Base):
+    __tablename__ = "admin_login_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(Text)             # Tên admin
+    ip_address = Column(Text)           # IP đăng nhập
+    user_agent = Column(Text)           # Trình duyệt
+    timestamp = Column(DateTime, default=datetime.now)  # Thời gian
+
+
 # --- Bảng audit_log: ghi log hành động admin ---
 class AuditLog(Base):
     __tablename__ = "audit_log"

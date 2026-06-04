@@ -236,7 +236,72 @@
       </div>
     </div>
 
-    <!-- Khu vực 3: Audit Log -->
+    <!-- Khu vực 3: Analytics -->
+    <div class="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-game text-xl text-[#FFD700]">THỐNG KÊ TRUY CẬP</h2>
+        <button onclick="loadAnalytics()" class="text-gray-400 hover:text-white text-sm transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Làm mới
+        </button>
+      </div>
+
+      <!-- Stats cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-[#0f0f0f] rounded-xl p-4 text-center border border-gray-800">
+          <div class="text-2xl font-bold text-[#FFD700]" id="stat-total">-</div>
+          <div class="text-gray-500 text-xs mt-1">Tổng truy cập</div>
+        </div>
+        <div class="bg-[#0f0f0f] rounded-xl p-4 text-center border border-gray-800">
+          <div class="text-2xl font-bold text-green-400" id="stat-today">-</div>
+          <div class="text-gray-500 text-xs mt-1">Hôm nay</div>
+        </div>
+        <div class="bg-[#0f0f0f] rounded-xl p-4 text-center border border-gray-800">
+          <div class="text-2xl font-bold text-blue-400" id="stat-week">-</div>
+          <div class="text-gray-500 text-xs mt-1">7 ngày qua</div>
+        </div>
+        <div class="bg-[#0f0f0f] rounded-xl p-4 text-center border border-gray-800">
+          <div class="text-2xl font-bold text-purple-400" id="stat-month">-</div>
+          <div class="text-gray-500 text-xs mt-1">30 ngày qua</div>
+        </div>
+      </div>
+
+      <!-- Top pages + Admin logins -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Top pages -->
+        <div>
+          <h3 class="text-white font-semibold mb-3 text-sm">Trang được truy cập nhiều</h3>
+          <div id="top-pages" class="space-y-2"></div>
+        </div>
+        <!-- Admin logins -->
+        <div>
+          <h3 class="text-white font-semibold mb-3 text-sm">Lịch sử đăng nhập Admin</h3>
+          <div id="admin-logins" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Recent visitors -->
+      <div class="mt-6">
+        <h3 class="text-white font-semibold mb-3 text-sm">Người truy cập gần đây</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-700">
+                <th class="text-left text-gray-400 font-medium py-2 px-3">Thời gian</th>
+                <th class="text-left text-gray-400 font-medium py-2 px-3">IP</th>
+                <th class="text-left text-gray-400 font-medium py-2 px-3">Trang</th>
+                <th class="text-left text-gray-400 font-medium py-2 px-3">Thiết bị</th>
+              </tr>
+            </thead>
+            <tbody id="recent-visitors"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Khu vực 4: Audit Log -->
     <div class="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-6">
       <div class="flex items-center justify-between mb-6">
         <h2 class="font-game text-xl text-[#FFD700]">LỊCH SỬ THAO TÁC</h2>
@@ -377,6 +442,7 @@
       document.getElementById("btn-logout").classList.remove("hidden");
       loadAdminAccounts();
       loadAuditLog();
+      loadAnalytics();
     }
 
 
@@ -456,6 +522,82 @@
             <tr><td colspan="6" class="text-center text-red-400 py-8">Lỗi tải dữ liệu.</td></tr>
           `;
         }
+      }
+    }
+
+
+    // ========================================================
+    // Tải thống kê truy cập
+    // ========================================================
+    async function loadAnalytics() {
+      try {
+        const res = await authFetch(`${BASE_URL}/api/admin/analytics`);
+        const data = await res.json();
+
+        // Stats
+        document.getElementById("stat-total").textContent = data.summary.total;
+        document.getElementById("stat-today").textContent = data.summary.today;
+        document.getElementById("stat-week").textContent = data.summary.week;
+        document.getElementById("stat-month").textContent = data.summary.month;
+
+        // Top pages
+        const topPagesEl = document.getElementById("top-pages");
+        if (data.top_pages.length === 0) {
+          topPagesEl.innerHTML = '<p class="text-gray-500 text-sm">Chưa có dữ liệu</p>';
+        } else {
+          topPagesEl.innerHTML = data.top_pages.map(p => `
+            <div class="flex items-center justify-between bg-[#0f0f0f] rounded-lg px-3 py-2 border border-gray-800">
+              <span class="text-gray-300 text-sm">${escapeHtml(p.page)}</span>
+              <span class="text-[#FFD700] font-semibold text-sm">${p.count}</span>
+            </div>
+          `).join("");
+        }
+
+        // Admin logins
+        const adminLoginsEl = document.getElementById("admin-logins");
+        if (data.admin_logins.length === 0) {
+          adminLoginsEl.innerHTML = '<p class="text-gray-500 text-sm">Chưa có đăng nhập</p>';
+        } else {
+          adminLoginsEl.innerHTML = data.admin_logins.slice(0, 10).map(log => {
+            const time = new Date(log.timestamp).toLocaleString("vi-VN");
+            return `
+              <div class="flex items-center justify-between bg-[#0f0f0f] rounded-lg px-3 py-2 border border-gray-800">
+                <div>
+                  <span class="text-white text-sm font-medium">${escapeHtml(log.username)}</span>
+                  <span class="text-gray-500 text-xs ml-2">${escapeHtml(log.ip_address)}</span>
+                </div>
+                <span class="text-gray-500 text-xs">${time}</span>
+              </div>
+            `;
+          }).join("");
+        }
+
+        // Recent visitors
+        const visitorsEl = document.getElementById("recent-visitors");
+        if (data.recent_visitors.length === 0) {
+          visitorsEl.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 py-4">Chưa có dữ liệu</td></tr>';
+        } else {
+          visitorsEl.innerHTML = data.recent_visitors.map(v => {
+            const time = new Date(v.timestamp).toLocaleString("vi-VN");
+            const ua = v.user_agent || "";
+            let device = "Unknown";
+            if (ua.includes("Mobile")) device = "📱 Mobile";
+            else if (ua.includes("Windows")) device = "💻 Windows";
+            else if (ua.includes("Mac")) device = "🍎 Mac";
+            else if (ua.includes("Linux")) device = "🐧 Linux";
+            return `
+              <tr class="border-b border-gray-800 hover:bg-[#222]">
+                <td class="py-2 px-3 text-gray-400 text-xs">${time}</td>
+                <td class="py-2 px-3 text-gray-300 text-sm">${escapeHtml(v.ip_address)}</td>
+                <td class="py-2 px-3 text-gray-300 text-sm">${escapeHtml(v.page)}</td>
+                <td class="py-2 px-3 text-gray-400 text-xs">${device}</td>
+              </tr>
+            `;
+          }).join("");
+        }
+
+      } catch (err) {
+        console.error("Lỗi tải analytics:", err);
       }
     }
 
