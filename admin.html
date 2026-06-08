@@ -34,6 +34,9 @@
       </a>
       <div class="flex items-center gap-4">
         <a href="/home" class="text-gray-400 hover:text-white text-sm transition-colors">← Trang chủ</a>
+        <a href="/change-password" id="btn-change-pw" class="hidden bg-gray-800 hover:bg-yellow-600 text-gray-300 hover:text-white text-sm px-4 py-2 rounded-lg transition-all">
+          🔑 Đổi MK
+        </a>
         <button id="btn-logout" onclick="logout()" class="hidden bg-gray-800 hover:bg-red-600 text-gray-300 hover:text-white text-sm px-4 py-2 rounded-lg transition-all">
           Đăng xuất
         </button>
@@ -456,6 +459,7 @@
       document.getElementById("login-screen").classList.add("hidden");
       document.getElementById("admin-screen").classList.remove("hidden");
       document.getElementById("btn-logout").classList.remove("hidden");
+      document.getElementById("btn-change-pw").classList.remove("hidden");
       loadAdminAccounts();
       loadAuditLog();
       loadAnalytics();
