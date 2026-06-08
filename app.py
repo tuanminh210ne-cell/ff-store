@@ -299,6 +299,11 @@ async def redirect_admin():
     return RedirectResponse(url="/admin")
 
 
+@app.get("/change-password", include_in_schema=False)
+async def serve_change_password():
+    return FileResponse(os.path.join(STATIC_DIR, "change-password.html"))
+
+
 # ============================================================
 # GET /api/accounts
 # Trả về danh sách acc đang bán (chỉ hiện field công khai)
