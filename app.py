@@ -44,7 +44,7 @@ from database import get_db, engine, Base, SessionLocal
 from models import Account, Admin, RateLimitLog, AuditLog, VisitorLog, AdminLoginLog, generate_slug
 from schemas import (
     AccountListItem, AccountDetail, MessageResponse, ErrorResponse,
-    AccountCreate, LoginRequest, LoginResponse,
+    AccountCreate, LoginRequest, LoginResponse, ChangePasswordRequest,
 )
 from auth import create_access_token, get_current_admin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -435,6 +435,48 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
         pass
 
     return LoginResponse(access_token=access_token)
+
+
+# ============================================================
+# POST /api/admin/change-password
+# Đổi mật khẩu admin (yêu cầu JWT)
+# ============================================================
+@app.post(
+    "/api/admin/change-password",
+    response_model=MessageResponse,
+    summary="Đổi mật khẩu admin (admin only)",
+    responses={401: {"model": ErrorResponse}},
+)
+@limiter.limit("5/minute")
+def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    # Kiểm tra mật khẩu cũ
+    if not check_password_hash(current_admin.hashed_password, body.old_password):
+        raise HTTPException(
+            status_code=401,
+            detail={"error": "Mật khẩu cũ không đúng"},
+        )
+
+    # Cập nhật mật khẩu mới
+    current_admin.hashed_password = generate_password_hash(body.new_password)
+    db.commit()
+
+    # Ghi audit log
+    write_audit_log(
+        admin_user=current_admin.username,
+        action="CHANGE_PASSWORD",
+        detail="Đổi mật khẩu thành công",
+        ip_address=request.client.host,
+    )
+
+    return MessageResponse(
+        success=True,
+        message="Đổi mật khẩu thành công",
+    )
 
 
 # ============================================================

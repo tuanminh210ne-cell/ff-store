@@ -119,3 +119,17 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int = 1800
+
+
+# ============================================================
+# Schema cho POST /api/admin/change-password
+# ============================================================
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+    @validator("new_password")
+    def password_strong(cls, v):
+        if len(v) < 6:
+            raise ValueError("Mật khẩu mới phải có ít nhất 6 ký tự")
+        return v
