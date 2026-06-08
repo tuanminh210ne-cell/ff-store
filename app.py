@@ -5,7 +5,9 @@
 
 import os
 import base64
+import time
 import requests as http_requests
+from collections import defaultdict
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -120,6 +122,81 @@ async def add_security_headers(request: Request, call_next):
     # Chỉ cho phép HTTPS sau 1 năm (HSTS)
     if request.url.scheme == "https":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+# ============================================================
+# BƯỚC 3.6: Chống DDoS - IP Rate Limiting
+# ============================================================
+# Lưu trữ số request per IP
+ip_request_counts = defaultdict(list)
+BLOCKED_IPS = set()
+BLOCK_DURATION = 300  # Block 5 phút nếu spam
+MAX_REQUESTS_PER_MINUTE = 60  # Max request/phút/IP
+MAX_REQUESTS_PER_SECOND = 10  # Max request/giây/IP
+
+
+@app.middleware("http")
+async def ddos_protection(request: Request, call_next):
+    client_ip = request.client.host
+    now = time.time()
+
+    # Kiểm tra IP bị block
+    if client_ip in BLOCKED_IPS:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "IP bị block tạm thời do spam quá nhiều request"},
+        )
+
+    # Đếm request per IP
+    ip_request_counts[client_ip].append(now)
+
+    # Xóa request cũ hơn 1 phút
+    ip_request_counts[client_ip] = [
+        t for t in ip_request_counts[client_ip] if now - t < 60
+    ]
+
+    # Kiểm tra rate limit per minute
+    if len(ip_request_counts[client_ip]) > MAX_REQUESTS_PER_MINUTE:
+        BLOCKED_IPS.add(client_ip)
+        # Unblock sau BLOCK_DURATION giây
+        import threading
+        threading.Timer(BLOCK_DURATION, lambda: BLOCKED_IPS.discard(client_ip)).start()
+        return JSONResponse(
+            status_code=429,
+            content={"error": f"Quá nhiều request! IP bị block {BLOCK_DURATION} giây"},
+        )
+
+    # Kiểm tra rate limit per second (10 request gần nhất)
+    recent_requests = [t for t in ip_request_counts[client_ip] if now - t < 1]
+    if len(recent_requests) > MAX_REQUESTS_PER_SECOND:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Gửi request quá nhanh! Chậm lại"},
+        )
+
+    # Kiểm tra request size (max 10MB)
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > 10 * 1024 * 1024:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "File quá lớn (tối đa 10MB)"},
+        )
+
+    # Block bot/crawler xấu
+    user_agent = request.headers.get("user-agent", "").lower()
+    blocked_agents = ["bot", "crawler", "spider", "scraper", "curl", "wget", "python-requests"]
+    if any(agent in user_agent for agent in blocked_agents):
+        # Cho phép curl/wget từ localhost (test)
+        if client_ip in ["127.0.0.1", "::1"]:
+            pass
+        else:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "Bot không được phép truy cập"},
+            )
+
+    response = await call_next(request)
     return response
 
 
@@ -250,7 +327,8 @@ STATIC_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Root → redirect tới /home
 @app.get("/", include_in_schema=False)
-async def root():
+@limiter.limit("30/minute")
+async def root(request: Request):
     return RedirectResponse(url="/home")
 
 
@@ -260,34 +338,40 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Route mới — URL sạch
 @app.get("/home", include_in_schema=False)
-async def serve_home():
+@limiter.limit("30/minute")
+async def serve_home(request: Request):
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
 @app.get("/danh-sach-acc", include_in_schema=False)
-async def serve_accounts():
+@limiter.limit("30/minute")
+async def serve_accounts(request: Request):
     return FileResponse(os.path.join(STATIC_DIR, "danh-sach-acc.html"))
 
 
 @app.get("/admin", include_in_schema=False)
-async def serve_admin():
+@limiter.limit("10/minute")
+async def serve_admin(request: Request):
     return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
 
 
 @app.get("/main.js", include_in_schema=False)
-async def serve_main_js():
+@limiter.limit("30/minute")
+async def serve_main_js(request: Request):
     return FileResponse(os.path.join(STATIC_DIR, "main.js"))
 
 
 # Route cũ — redirect sang URL mới
 @app.get("/index.html", include_in_schema=False)
-async def redirect_index():
+@limiter.limit("30/minute")
+async def redirect_index(request: Request):
     return RedirectResponse(url="/home")
 
 
 # Detail page theo slug: /acc/{slug}
 @app.get("/acc/{slug}", include_in_schema=False)
-async def serve_detail_by_slug(slug: str, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def serve_detail_by_slug(slug: str, request: Request, db: Session = Depends(get_db)):
     account = db.query(Account).filter(Account.slug == slug).first()
     if account:
         return FileResponse(os.path.join(STATIC_DIR, "detail.html"))
@@ -295,12 +379,14 @@ async def serve_detail_by_slug(slug: str, db: Session = Depends(get_db)):
 
 
 @app.get("/admin.html", include_in_schema=False)
-async def redirect_admin():
+@limiter.limit("10/minute")
+async def redirect_admin(request: Request):
     return RedirectResponse(url="/admin")
 
 
 @app.get("/change-password", include_in_schema=False)
-async def serve_change_password():
+@limiter.limit("5/minute")
+async def serve_change_password(request: Request):
     return FileResponse(os.path.join(STATIC_DIR, "change-password.html"))
 
 
@@ -313,7 +399,7 @@ async def serve_change_password():
     response_model=list[AccountListItem],
     summary="Danh sách acc đang bán",
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def list_accounts(request: Request, db: Session = Depends(get_db)):
     # Trả về TẤT CẢ acc (cả đã bán) để web uy tín hơn
     accounts = db.query(Account).order_by(Account.id.desc()).all()
@@ -329,7 +415,7 @@ def list_accounts(request: Request, db: Session = Depends(get_db)):
     response_model=list[AccountDetail],
     summary="Tất cả acc (admin only)",
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def admin_list_accounts(
     request: Request,
     db: Session = Depends(get_db),
@@ -349,7 +435,7 @@ def admin_list_accounts(
     summary="Chi tiết acc theo ID",
     responses={404: {"model": ErrorResponse}},
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def get_account(
     request: Request,
     account_id: int,
@@ -376,7 +462,7 @@ def get_account(
     summary="Chi tiết acc theo slug",
     responses={404: {"model": ErrorResponse}},
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def get_account_by_slug(
     request: Request,
     slug: str,
@@ -494,7 +580,7 @@ def change_password(
     summary="Thêm acc mới (admin only)",
     responses={401: {"model": ErrorResponse}},
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def add_account(
     request: Request,
     body: AccountCreate,
@@ -550,7 +636,7 @@ def add_account(
     summary="Đánh dấu acc đã bán (admin only)",
     responses={404: {"model": ErrorResponse}},
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def mark_as_sold(
     request: Request,
     account_id: int,
@@ -595,7 +681,7 @@ def mark_as_sold(
     summary="Xóa acc (admin only)",
     responses={404: {"model": ErrorResponse}},
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def delete_account(
     request: Request,
     account_id: int,
@@ -639,7 +725,7 @@ def delete_account(
     "/api/admin/audit-log",
     summary="Lịch sử hành động admin (admin only)",
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def get_audit_log(
     request: Request,
     db: Session = Depends(get_db),
@@ -668,7 +754,7 @@ def get_audit_log(
     "/api/admin/analytics",
     summary="Thống kê truy cập (admin only)",
 )
-@limiter.limit("100/minute")
+@limiter.limit("30/minute")
 def get_analytics(
     request: Request,
     db: Session = Depends(get_db),
@@ -756,6 +842,36 @@ def get_analytics(
 # Upload helpers — xử lý upload lên từng service
 # ============================================================
 
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def _validate_upload(filename: str, content: bytes) -> None:
+    """Kiểm tra file upload có hợp lệ không"""
+    # Kiểm tra đuôi file
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chỉ chấp nhận ảnh: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    # Kiểm tra kích thước
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File quá lớn (tối đa {MAX_FILE_SIZE // 1024 // 1024}MB)",
+        )
+
+    # Kiểm tra file header (magic bytes)
+    if content[:3] == b"MZ":  # .exe
+        raise HTTPException(status_code=400, detail="Không chấp nhận file thực thi")
+    if content[:4] == b"\x7fELF":  # Linux binary
+        raise HTTPException(status_code=400, detail="Không chấp nhận file binary")
+    if content[:2] == b"PK":  # .zip/.docx/.apk
+        raise HTTPException(status_code=400, detail="Không chấp nhận file nén")
+
+
 def _upload_to_imgbb(content: bytes, filename: str) -> str:
     """Upload ảnh lên ImgBB, trả về URL. Xoay vòng API key."""
     global _imgbb_index
@@ -833,6 +949,9 @@ async def upload_image(
         filename = file.filename or "image.jpg"
         content_type = file.content_type or "image/jpeg"
         content = await file.read()
+
+        # Validate file trước khi upload
+        _validate_upload(filename, content)
 
         print(f"[UPLOAD] Method: {method}, File: {filename}, Size: {len(content)} bytes")
 
