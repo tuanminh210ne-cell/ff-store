@@ -15,9 +15,34 @@ from werkzeug.security import check_password_hash
 
 
 # ============================================================
-# Cấu hình JWT — đọc từ biến môi trường (fallback cho dev local)
+# Load .env file (không cần python-dotenv)
 # ============================================================
-SECRET_KEY = os.getenv("SECRET_KEY", "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6")
+def _load_env():
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+_load_env()
+
+
+# ============================================================
+# Cấu hình JWT — đọc từ biến môi trường (bắt buộc)
+# ============================================================
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY chưa được cấu hình trong .env — chạy: python3 -c \"import secrets; print(secrets.token_hex(32))\"")
 ALGORITHM = "HS256"
 TOKEN_EXPIRE = 30  # Phút
 

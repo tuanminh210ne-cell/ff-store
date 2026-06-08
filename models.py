@@ -142,12 +142,18 @@ def init_db():
 
     # --- Thêm admin mặc định (nếu chưa có) ---
     if session.query(Admin).count() == 0:
+        import os
+        admin_user = os.getenv("ADMIN_USERNAME", "admin")
+        admin_pass = os.getenv("ADMIN_PASSWORD")
+        if not admin_pass:
+            print("  [LOI] ADMIN_PASSWORD chua cau hinh trong .env!")
+            return
         default_admin = Admin(
-            username="admin",
-            hashed_password=generate_password_hash("Admin@2024"),
+            username=admin_user,
+            hashed_password=generate_password_hash(admin_pass),
         )
         session.add(default_admin)
-        print("  [OK] Da them admin mac dinh: admin / Admin@2024")
+        print(f"  [OK] Da them admin mac dinh: {admin_user}")
 
     # Lưu thay đổi vào database
     session.commit()

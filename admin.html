@@ -730,26 +730,11 @@
 
 
     // ========================================================
-    // Hệ thống upload ảnh - Hỗ trợ 4 phương thức
+    // Hệ thống upload ảnh - Upload qua backend proxy (bảo mật)
+    // API keys được lưu trên server, không lộ ra frontend
     // ========================================================
     let galleryImages = [];
     let isUploading = false;
-
-    // ImgBB API Keys (xoay vòng)
-    const IMGBB_KEYS = [
-      "e1bb3af692ac502b19f75b834ba75d1c",
-      "c54f02ee8b560e23cadfb3cf8a25f59f",
-      "6efbdaa21e1b6ebb473832898cb6f672",
-      "b4fabce5c21871df7fde3ae1b722b07a",
-    ];
-    let imgbbKeyIndex = 0;
-
-    // Cloudinary config
-    const CLOUDINARY_CLOUD = "dplgh482d";
-    const CLOUDINARY_PRESET = "ff_store_unsigned"; // Upload preset unsigned
-
-    // Google Drive Apps Script URL
-    const GDRIVE_URL = "https://script.google.com/macros/s/AKfycbwgOzSIHZa37ZJIBD5EhLB4inns4gY4XM6pgeyfSag0SNwQfTKXBOA7x6g9WI5PXuA3/exec";
 
     // Lấy phương thức upload cho ảnh bìa
     function getCoverUploadMethod() {
@@ -772,104 +757,69 @@
     }
 
     // ========================================================
-    // Upload lên ImgBB
+    // Upload qua backend proxy — tất cả methods đều gọi server
     // ========================================================
-    async function uploadToImgBB(base64Data, filename) {
-      const key = IMGBB_KEYS[imgbbKeyIndex];
-      imgbbKeyIndex = (imgbbKeyIndex + 1) % IMGBB_KEYS.length;
-
+    async function uploadViaBackend(file, method) {
       const formData = new FormData();
-      formData.append("key", key);
-      formData.append("image", base64Data.split(",")[1] || base64Data);
-      formData.append("name", filename.replace(/\.[^.]+$/, ""));
+      formData.append("file", file);
+      formData.append("method", method);
 
-      const res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: formData });
-      const data = await res.json();
-
-      if (!data.success) throw new Error(data.error?.message || "Upload ImgBB thất bại");
-      return data.data.display_url;
-    }
-
-    // ========================================================
-    // Upload lên Cloudinary
-    // ========================================================
-    async function uploadToCloudinary(base64Data, filename) {
-      const formData = new FormData();
-      formData.append("file", base64Data);
-      formData.append("upload_preset", CLOUDINARY_PRESET);
-      formData.append("public_id", filename.replace(/\.[^.]+$/, ""));
-
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(`${window.location.origin}/api/admin/upload`, {
         method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
         body: formData,
       });
+
+      if (res.status === 401) {
+        sessionStorage.removeItem("token");
+        location.reload();
+        throw new Error("Phiên đăng nhập hết hạn");
+      }
+
       const data = await res.json();
-
-      if (data.error) throw new Error(data.error.message);
-      return data.secure_url;
-    }
-
-    // ========================================================
-    // Upload lên Google Drive (qua Apps Script)
-    // ========================================================
-    async function uploadToGDrive(base64Data, filename) {
-      const res = await fetch(GDRIVE_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          image: base64Data.split(",")[1] || base64Data,
-          filename: filename,
-          mimeType: base64Data.match(/data:([^;]+)/)?.[1] || "image/jpeg",
-        }),
-      });
-      const data = await res.json();
-
-      if (!data.success) throw new Error(data.error || "Upload Google Drive thất bại");
+      if (!res.ok) throw new Error(data.detail || "Upload thất bại");
+      if (!data.success) throw new Error("Upload thất bại");
       return data.url;
     }
 
     // ========================================================
-    // Upload base64 trực tiếp (lưu vào database)
+    // Upload base64 trực tiếp (resize local, không gửi lên server)
     // ========================================================
-    async function uploadAsBase64(base64Data, filename) {
-      // Resize ảnh để giảm kích thước (tối đa 800px)
+    async function uploadAsBase64(file) {
       return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement("canvas");
-          const maxSize = 800;
-          let w = img.width, h = img.height;
-          if (w > maxSize || h > maxSize) {
-            if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-            else { w = Math.round(w * maxSize / h); h = maxSize; }
-          }
-          canvas.width = w;
-          canvas.height = h;
-          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement("canvas");
+            const maxSize = 800;
+            let w = img.width, h = img.height;
+            if (w > maxSize || h > maxSize) {
+              if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+              else { w = Math.round(w * maxSize / h); h = maxSize; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", 0.7));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
         };
-        img.onerror = reject;
-        img.src = base64Data;
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
     }
 
     // ========================================================
-    // Upload chính - tự động chọn phương thức
+    // Upload chính - gọi backend proxy hoặc local base64
     // ========================================================
-    async function uploadImage(base64Data, filename, method = null) {
-      if (!method) method = "imgbb";
-
-      switch (method) {
-        case "imgbb":
-          return await uploadToImgBB(base64Data, filename);
-        case "cloudinary":
-          return await uploadToCloudinary(base64Data, filename);
-        case "gdrive":
-          return await uploadToGDrive(base64Data, filename);
-        case "base64":
-          return await uploadAsBase64(base64Data, filename);
-        default:
-          return await uploadToImgBB(base64Data, filename);
+    async function uploadImage(file, method = "imgbb") {
+      if (method === "base64") {
+        return await uploadAsBase64(file);
       }
+      return await uploadViaBackend(file, method);
     }
 
     // ========================================================
@@ -889,8 +839,7 @@
       showToast(`Đang upload ảnh bìa qua ${method}...`, "success");
 
       try {
-        const base64 = await readFileAsBase64(file);
-        const url = await uploadImage(base64, file.name, method);
+        const url = await uploadImage(file, method);
 
         document.getElementById("add-image").value = url;
         document.getElementById("preview-img").src = url;
@@ -930,8 +879,7 @@
         }
 
         try {
-          const base64 = await readFileAsBase64(file);
-          const url = await uploadImage(base64, file.name, method);
+          const url = await uploadImage(file, method);
           galleryImages.push(url);
           updateGalleryPreview();
           successCount++;

@@ -8,8 +8,16 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_ORIGINS
-        value: https://ff-store.onrender.com
+        value: https://thuhasemiminisizeandsuperminibabynumberoneintheworld.io.vn
       - key: ADMIN_USERNAME
         value: admin
       - key: ADMIN_PASSWORD
+        sync: false
+      - key: IMGBB_KEYS
+        sync: false
+      - key: CLOUDINARY_CLOUD
+        sync: false
+      - key: CLOUDINARY_PRESET
+        sync: false
+      - key: GAS_URL
         sync: false

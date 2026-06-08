@@ -7,11 +7,33 @@ import json
 import base64
 import requests
 
-# --- Google Apps Script Web App URL ---
-GAS_URL = os.getenv(
-    "GAS_URL",
-    "https://script.google.com/macros/s/AKfycbwgOzSIHZa37ZJIBD5EhLB4inns4gY4XM6pgeyfSag0SNwQfTKXBOA7x6g9WI5PXuA3/exec"
-)
+
+# ============================================================
+# Load .env file (không cần python-dotenv)
+# ============================================================
+def _load_env():
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+_load_env()
+
+# --- Google Apps Script Web App URL (bắt buộc) ---
+GAS_URL = os.getenv("GAS_URL")
+if not GAS_URL:
+    raise RuntimeError("GAS_URL chưa được cấu hình trong .env")
 
 
 def upload_image_to_drive(file_bytes: bytes, filename: str, mimetype: str = "image/jpeg") -> str:

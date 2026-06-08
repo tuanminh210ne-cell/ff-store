@@ -5,6 +5,7 @@
 
 import os
 import base64
+import requests as http_requests
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -13,6 +14,30 @@ from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+
+
+# ============================================================
+# Load .env file (không cần python-dotenv)
+# ============================================================
+def _load_env():
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            # Chỉ set nếu chưa có trong env (env vars thật luôn ưu tiên)
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+_load_env()
 
 # --- Import từ các file đã tách ---
 from database import get_db, engine, Base, SessionLocal
@@ -23,7 +48,13 @@ from schemas import (
 )
 from auth import create_access_token, get_current_admin
 from werkzeug.security import check_password_hash, generate_password_hash
-from gdrive import upload_image_to_drive, GAS_URL
+from gdrive import upload_image_to_drive
+
+# --- Upload service config từ env ---
+IMGBB_KEYS = [k.strip() for k in os.getenv("IMGBB_KEYS", "").split(",") if k.strip()]
+CLOUDINARY_CLOUD = os.getenv("CLOUDINARY_CLOUD", "")
+CLOUDINARY_PRESET = os.getenv("CLOUDINARY_PRESET", "")
+_imgbb_index = 0  # Counter xoay vòng key
 
 
 # ============================================================
@@ -170,7 +201,9 @@ def startup():
         # Tạo admin mặc định từ biến môi trường (nếu chưa có)
         if db.query(Admin).count() == 0:
             admin_user = os.getenv("ADMIN_USERNAME", "admin")
-            admin_pass = os.getenv("ADMIN_PASSWORD", "Admin@2024")
+            admin_pass = os.getenv("ADMIN_PASSWORD")
+            if not admin_pass:
+                raise RuntimeError("ADMIN_PASSWORD chưa được cấu hình trong .env")
             db.add(Admin(
                 username=admin_user,
                 hashed_password=generate_password_hash(admin_pass),
@@ -673,21 +706,79 @@ def get_analytics(
 
 
 # ============================================================
+# Upload helpers — xử lý upload lên từng service
+# ============================================================
+
+def _upload_to_imgbb(content: bytes, filename: str) -> str:
+    """Upload ảnh lên ImgBB, trả về URL. Xoay vòng API key."""
+    global _imgbb_index
+    if not IMGBB_KEYS:
+        raise HTTPException(status_code=500, detail="Chưa cấu hình IMGBB_KEYS trong .env")
+
+    key = IMGBB_KEYS[_imgbb_index % len(IMGBB_KEYS)]
+    _imgbb_index += 1
+
+    b64 = base64.b64encode(content).decode("utf-8")
+    resp = http_requests.post(
+        "https://api.imgbb.com/1/upload",
+        data={"key": key, "image": b64, "name": filename},
+        timeout=30,
+    )
+    data = resp.json()
+    if not data.get("success"):
+        raise HTTPException(status_code=500, detail=f"ImgBB lỗi: {data.get('error', {}).get('message', 'Unknown')}")
+    return data["data"]["url"]
+
+
+def _upload_to_cloudinary(content: bytes, filename: str) -> str:
+    """Upload ảnh lên Cloudinary, trả về URL."""
+    if not CLOUDINARY_CLOUD or not CLOUDINARY_PRESET:
+        raise HTTPException(status_code=500, detail="Chưa cấu hình CLOUDINARY_CLOUD/CLOUDINARY_PRESET trong .env")
+
+    b64 = base64.b64encode(content).decode("utf-8")
+    data_uri = f"data:image/jpeg;base64,{b64}"
+
+    resp = http_requests.post(
+        f"https://api.cloudinary.com/v1_1/{CLOUDINARY_CLOUD}/image/upload",
+        data={"file": data_uri, "upload_preset": CLOUDINARY_PRESET},
+        timeout=30,
+    )
+    result = resp.json()
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=f"Cloudinary lỗi: {result['error'].get('message', 'Unknown')}")
+    return result["secure_url"]
+
+
+def _upload_to_gdrive(content: bytes, filename: str, content_type: str) -> str:
+    """Upload ảnh lên Google Drive qua Apps Script."""
+    return upload_image_to_drive(content, filename, content_type)
+
+
+def _upload_to_base64(content: bytes, filename: str) -> str:
+    """Trả về data URI base64 (không upload đi đâu cả)."""
+    b64 = base64.b64encode(content).decode("utf-8")
+    return f"data:image/jpeg;base64,{b64}"
+
+
+# ============================================================
 # POST /api/admin/upload
-# Upload ảnh lên Google Drive (yêu cầu JWT)
+# Upload ảnh — hỗ trợ imgbb, cloudinary, gdrive, base64
+# Query param: ?method=imgbb (mặc định)
 # ============================================================
 @app.post(
     "/api/admin/upload",
-    summary="Upload ảnh lên Google Drive (admin only)",
+    summary="Upload ảnh (admin only) — hỗ trợ imgbb, cloudinary, gdrive, base64",
 )
 @limiter.limit("50/minute")
 async def upload_image(
     request: Request,
     current_admin: Admin = Depends(get_current_admin),
 ):
+    global _imgbb_index
     try:
         form = await request.form()
         file = form.get("file")
+        method = form.get("method", "imgbb")
 
         if not file:
             raise HTTPException(status_code=400, detail="Thiếu file ảnh")
@@ -696,13 +787,20 @@ async def upload_image(
         content_type = file.content_type or "image/jpeg"
         content = await file.read()
 
-        # Log kích thước ảnh
-        print(f"[UPLOAD] File: {filename}, Size: {len(content)} bytes, Type: {content_type}")
+        print(f"[UPLOAD] Method: {method}, File: {filename}, Size: {len(content)} bytes")
 
-        # Upload bytes trực tiếp lên Google Drive
-        url = upload_image_to_drive(content, filename, content_type)
+        if method == "imgbb":
+            url = _upload_to_imgbb(content, filename)
+        elif method == "cloudinary":
+            url = _upload_to_cloudinary(content, filename)
+        elif method == "gdrive":
+            url = _upload_to_gdrive(content, filename, content_type)
+        elif method == "base64":
+            url = _upload_to_base64(content, filename)
+        else:
+            raise HTTPException(status_code=400, detail=f"Method không hỗ trợ: {method}")
 
-        print(f"[UPLOAD] Success: {url}")
+        print(f"[UPLOAD] Success: {url[:80]}...")
         return {"success": True, "url": url}
     except HTTPException:
         raise
